@@ -15,10 +15,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Build outputs (binaries should be published to GitHub Releases)
-dist/*.exe
-dist/*.zip
-dist/windows-x64/lidm.exe
-dist/windows-x64/*.zip
-dist/windows-x64/public/
-dist/__pycache__/
+# Binaries and archives
+*.exe
+*.zip
+*.tar.gz
+
+# Build outputs
+dist/
