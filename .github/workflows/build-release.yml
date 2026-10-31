@@ -1,0 +1,57 @@
+name: Build & Release Multiplatform
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: |
+          npm install -g esbuild pkg
+
+      - name: Build Bundles
+        run: |
+          mkdir -p dist/windows-x64/public
+          # Linux ESM bundle
+          esbuild src/main.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/lidm.js
+          # Windows CJS bundle
+          esbuild src/main.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/lidm-cjs.cjs
+          # Compile Windows standalone PE32+ executable
+          pkg --target node18-win-x64 dist/lidm-cjs.cjs -o dist/windows-x64/lidm.exe
+
+      - name: Package Windows Release
+        run: |
+          cp -r public/* dist/windows-x64/public/
+          cp "Internet Download Manager.bat" dist/windows-x64/ 2>/dev/null || true
+          cp lidm-silent.vbs dist/windows-x64/ 2>/dev/null || true
+          cp install-windows.bat dist/windows-x64/ 2>/dev/null || true
+          cp uninstall-windows.bat dist/windows-x64/ 2>/dev/null || true
+          cp README-WINDOWS.txt dist/windows-x64/ 2>/dev/null || true
+          cd dist && zip -r LIDM-Windows-x64.zip windows-x64/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/LIDM-Windows-x64.zip
+            dist/windows-x64/lidm.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true

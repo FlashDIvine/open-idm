@@ -1,0 +1,24 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary and runtime files
+.lidm/
+*.log
+.DS_Store
+Thumbs.db
+
+# Build outputs (binaries should be published to GitHub Releases)
+dist/*.exe
+dist/*.zip
+dist/windows-x64/lidm.exe
+dist/windows-x64/*.zip
+dist/windows-x64/public/
+dist/__pycache__/

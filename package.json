@@ -1,0 +1,26 @@
+{
+  "name": "lidm",
+  "version": "1.0.0",
+  "description": "Linux Internet Download Manager - Unlimited multi-threaded downloader with IDM search and REA MCP integration",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "lidm": "bin/lidm.js"
+  },
+  "scripts": {
+    "start": "node bin/lidm.js ui",
+    "test": "node --test test/*.test.ts",
+    "mcp": "node bin/lidm.js mcp"
+  },
+  "keywords": [
+    "download-manager",
+    "idm",
+    "linux",
+    "multi-threaded",
+    "segmented-download",
+    "mcp-server",
+    "rea"
+  ],
+  "author": "Antigravity & Najib",
+  "license": "MIT"
+}
