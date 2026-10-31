@@ -80,10 +80,13 @@ export function openAppWindow(url: string): void {
 
   // Check native GTK3+WebKit2 lidm-app.py first
   const execDir = path.dirname(process.execPath);
+  const baseDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
   const possiblePyApps = [
     path.join(execDir, "bin", "lidm-app.py"),
     path.join(execDir, "lidm-app.py"),
-    "/home/najib/Dokumen/REA/lidm/bin/lidm-app.py",
+    path.resolve(baseDir, "../bin/lidm-app.py"),
+    path.resolve(baseDir, "../../bin/lidm-app.py"),
+    path.join(process.cwd(), "bin", "lidm-app.py"),
   ];
   for (const pyApp of possiblePyApps) {
     if (fs.existsSync(pyApp)) {

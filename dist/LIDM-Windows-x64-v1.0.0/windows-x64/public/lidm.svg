@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1976D2"/>
+      <stop offset="100%" stop-color="#0D47A1"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676"/>
+      <stop offset="100%" stop-color="#00C853"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Disc -->
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- Segment lines (representing multi-threading) -->
+  <rect x="24" y="24" width="80" height="8" rx="4" fill="#64B5F6" opacity="0.6"/>
+  <rect x="24" y="38" width="80" height="8" rx="4" fill="#42A5F5" opacity="0.8"/>
+  <rect x="24" y="52" width="80" height="8" rx="4" fill="#2196F3"/>
+  <!-- Down Arrow (IDM style) -->
+  <path d="M64 50 L64 96 M42 76 L64 98 L86 76" fill="none" stroke="url(#arrow)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Base bar -->
+  <rect x="30" y="106" width="68" height="8" rx="4" fill="#FFFFFF"/>
+</svg>

@@ -29,9 +29,6 @@ function getPublicDir(): string {
   const candidateCwd = path.resolve(process.cwd(), "public");
   if (fs.existsSync(candidateCwd)) return candidateCwd;
 
-  const candidateFixed = "/home/najib/Dokumen/REA/lidm/public";
-  if (fs.existsSync(candidateFixed)) return candidateFixed;
-
   return candidateCwd;
 }
 

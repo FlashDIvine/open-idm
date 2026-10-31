@@ -655,8 +655,6 @@ function getPublicDir() {
   }
   const candidateCwd = import_node_path4.default.resolve(process.cwd(), "public");
   if (import_node_fs3.default.existsSync(candidateCwd)) return candidateCwd;
-  const candidateFixed = "/home/najib/Dokumen/REA/lidm/public";
-  if (import_node_fs3.default.existsSync(candidateFixed)) return candidateFixed;
   return candidateCwd;
 }
 var PUBLIC_DIR = getPublicDir();
@@ -1137,10 +1135,13 @@ function openAppWindow(url) {
   const isGui = Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
   if (!isGui) return;
   const execDir = import_node_path5.default.dirname(process.execPath);
+  const baseDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
   const possiblePyApps = [
     import_node_path5.default.join(execDir, "bin", "lidm-app.py"),
     import_node_path5.default.join(execDir, "lidm-app.py"),
-    "/home/najib/Dokumen/REA/lidm/bin/lidm-app.py"
+    import_node_path5.default.resolve(baseDir, "../bin/lidm-app.py"),
+    import_node_path5.default.resolve(baseDir, "../../bin/lidm-app.py"),
+    import_node_path5.default.join(process.cwd(), "bin", "lidm-app.py")
   ];
   for (const pyApp of possiblePyApps) {
     if (import_node_fs4.default.existsSync(pyApp)) {
