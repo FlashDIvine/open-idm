@@ -52,22 +52,47 @@ export class WebServer {
   public async start(): Promise<void> {
     await this.queue.init();
 
-    // Listen to queue events and broadcast to SSE clients
-    const broadcast = () => {
+    // Listen to queue events and broadcast to SSE clients with smooth 120ms throttling
+    let broadcastTimer: NodeJS.Timeout | null = null;
+    let pendingBroadcast = false;
+
+    const doSend = () => {
       if (this.sseClients.size === 0) return;
       const data = JSON.stringify(this.queue.getTasks());
       for (const client of this.sseClients) {
-        client.write(`data: ${data}\n\n`);
+        try {
+          client.write(`data: ${data}\n\n`);
+        } catch {}
       }
     };
 
-    this.queue.on("taskProgress", broadcast);
-    this.queue.on("taskSpeed", broadcast);
-    this.queue.on("taskAdded", broadcast);
-    this.queue.on("taskUpdated", broadcast);
-    this.queue.on("taskCompleted", broadcast);
-    this.queue.on("taskError", broadcast);
-    this.queue.on("taskDeleted", broadcast);
+    const broadcast = (immediate = false) => {
+      if (this.sseClients.size === 0) return;
+      if (immediate) {
+        doSend();
+        return;
+      }
+      if (broadcastTimer) {
+        pendingBroadcast = true;
+        return;
+      }
+      doSend();
+      broadcastTimer = setTimeout(() => {
+        broadcastTimer = null;
+        if (pendingBroadcast) {
+          pendingBroadcast = false;
+          doSend();
+        }
+      }, 120);
+    };
+
+    this.queue.on("taskProgress", () => broadcast(false));
+    this.queue.on("taskSpeed", () => broadcast(false));
+    this.queue.on("taskAdded", () => broadcast(true));
+    this.queue.on("taskUpdated", () => broadcast(true));
+    this.queue.on("taskCompleted", () => broadcast(true));
+    this.queue.on("taskError", () => broadcast(true));
+    this.queue.on("taskDeleted", () => broadcast(true));
 
     this.server = http.createServer(async (req, res) => {
       const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);

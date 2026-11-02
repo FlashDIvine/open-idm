@@ -772,7 +772,8 @@
     }
 
     function formatBytes(bytes) {
-      if (bytes <= 0 || !bytes) return "--";
+      if (!bytes || isNaN(bytes) || bytes <= 0) return "--";
+      if (bytes < 1024) return bytes + " B";
       const k = 1024;
       const sizes = ["B", "KB", "MB", "GB", "TB"];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -780,15 +781,23 @@
     }
 
     function formatSpeed(bytesPerSec) {
-      if (!bytesPerSec || bytesPerSec <= 0) return "--";
-      return formatBytes(bytesPerSec) + "/s";
+      if (!bytesPerSec || isNaN(bytesPerSec) || bytesPerSec <= 0) return "--";
+      if (bytesPerSec < 1024) return bytesPerSec + " B/s";
+      const k = 1024;
+      const sizes = ["B", "KB", "MB", "GB", "TB"];
+      const i = Math.floor(Math.log(bytesPerSec) / Math.log(k));
+      return (bytesPerSec / Math.pow(k, i)).toFixed(1) + " " + sizes[i] + "/s";
     }
 
     function formatEta(seconds) {
-      if (!seconds || seconds <= 0) return "--";
+      if (!seconds || isNaN(seconds) || seconds <= 0) return "--";
+      if (seconds < 60) return `${seconds}s`;
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
-      return `${m}m ${s}s`;
+      if (m < 60) return `${m}m ${s}s`;
+      const h = Math.floor(m / 60);
+      const remM = m % 60;
+      return `${h}h ${remM}m`;
     }
 
     function formatDuration(sec) {
@@ -880,6 +889,26 @@
         if (task.mediaType === "video_stream") modeLabel = "🎬 Video Stream";
         else if (task.mediaType === "audio_stream") modeLabel = "🎵 Audio Stream";
 
+        let speedDisplay = "--";
+        let etaDisplay = "--";
+        if (task.status === "downloading" || task.status === "connecting") {
+          speedDisplay = task.speed > 0 ? formatSpeed(task.speed) : '<span style="color:#2563eb; font-style:italic;">Detecting...</span>';
+          if (task.eta > 0) {
+            etaDisplay = formatEta(task.eta);
+          } else if (task.speed > 0 && task.fileSize > 0) {
+            const rem = Math.max(0, Math.round((task.fileSize - task.downloadedBytes) / task.speed));
+            etaDisplay = rem > 0 ? formatEta(rem) : "--";
+          } else {
+            etaDisplay = '<span style="color:#64748b;">--</span>';
+          }
+        } else if (task.status === "completed") {
+          speedDisplay = "--";
+          etaDisplay = '<span style="color:#16a34a; font-weight:600;">Done</span>';
+        } else if (task.status === "paused") {
+          speedDisplay = "--";
+          etaDisplay = '<span style="color:#b45309;">Paused</span>';
+        }
+
         tr.innerHTML = `
           <td>
             <div class="task-title-cell" title="${task.fileName}">
@@ -895,8 +924,8 @@
             </div>
           </td>
           <td><span class="status-badge status-${task.status}">${task.status}</span></td>
-          <td style="color: ${task.speed > 0 ? '#2563eb' : 'inherit'}; font-weight: ${task.speed > 0 ? '600' : 'normal'};">${task.status === "downloading" ? formatSpeed(task.speed) : "--"}</td>
-          <td>${task.status === "downloading" ? formatEta(task.eta) : "--"}</td>
+          <td style="color: ${task.speed > 0 ? '#2563eb' : 'inherit'}; font-weight: ${task.speed > 0 ? '600' : 'normal'};">${speedDisplay}</td>
+          <td>${etaDisplay}</td>
           <td><span style="font-size: 11px; color: #475569;">${modeLabel}</span></td>
           <td title="${task.url}"><span style="font-size: 11px; color: #64748b;">${task.url}</span></td>
           <td style="text-align: center;">

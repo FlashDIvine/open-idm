@@ -339,13 +339,10 @@ export class SegmentDownloader extends EventEmitter {
           this.task.eta = 0;
         }
 
-        this.emit("speed", {
-          speed: this.task.speed,
-          eta: this.task.eta,
-          progressPercent: this.task.progressPercent,
-        });
+        this.task.updatedAt = Date.now();
+        this.emit("speed", this.task);
       }
-    }, 500);
+    }, 400);
   }
 
   private cleanup(): void {

@@ -9,6 +9,9 @@ import type { DownloadTask, StreamFormatOption, StreamProbeResult } from "../typ
 export class StreamDownloader extends EventEmitter {
   private childProcess: ChildProcess | null = null;
   private isPaused: boolean = false;
+  private lastSpeedCheckTime: number = 0;
+  private lastDownloadedBytes: number = 0;
+  private rollingSpeed: number = 0;
   public task: DownloadTask;
 
   constructor(task: DownloadTask) {
@@ -203,16 +206,20 @@ export class StreamDownloader extends EventEmitter {
   /**
    * Parse speed strings like "1.25MiB/s", "500KiB/s", "2.0MB/s" to bytes/sec
    */
-  private static parseSpeedToBytes(speedStr: string): number {
-    if (!speedStr || speedStr.includes("NA")) return 0;
-    const clean = speedStr.trim();
-    const match = clean.match(/^([\d.]+)\s*([a-zA-Z/]+)$/);
+  public static parseSpeedToBytes(speedStr: string): number {
+    if (!speedStr) return 0;
+    // Strip ANSI color escape codes and clean whitespace
+    const clean = speedStr.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "").trim();
+    if (!clean || clean.includes("NA")) return 0;
+
+    const match = clean.match(/([\d.]+)\s*([a-zA-Z/]+)/);
     if (!match) return 0;
     const val = parseFloat(match[1]);
+    if (isNaN(val)) return 0;
     const unit = match[2].toLowerCase();
-    if (unit.startsWith("kib") || unit.startsWith("kb")) return Math.round(val * 1024);
-    if (unit.startsWith("mib") || unit.startsWith("mb")) return Math.round(val * 1024 * 1024);
-    if (unit.startsWith("gib") || unit.startsWith("gb")) return Math.round(val * 1024 * 1024 * 1024);
+    if (unit.startsWith("k")) return Math.round(val * 1024);
+    if (unit.startsWith("m")) return Math.round(val * 1024 * 1024);
+    if (unit.startsWith("g")) return Math.round(val * 1024 * 1024 * 1024);
     if (unit.startsWith("b")) return Math.round(val);
     return Math.round(val);
   }
@@ -220,10 +227,14 @@ export class StreamDownloader extends EventEmitter {
   /**
    * Parse ETA strings like "00:15", "01:20:30" to seconds
    */
-  private static parseEtaToSeconds(etaStr: string): number {
-    if (!etaStr || etaStr.includes("NA")) return 0;
-    const parts = etaStr.trim().split(":").map((p) => parseInt(p, 10));
+  public static parseEtaToSeconds(etaStr: string): number {
+    if (!etaStr) return 0;
+    const clean = etaStr.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "").trim();
+    if (!clean || clean.includes("NA")) return 0;
+
+    const parts = clean.split(":").map((p) => parseInt(p, 10));
     if (parts.some(isNaN)) return 0;
+    if (parts.length === 1) return parts[0];
     if (parts.length === 2) return parts[0] * 60 + parts[1];
     if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
     return 0;
@@ -262,6 +273,7 @@ export class StreamDownloader extends EventEmitter {
       "--no-playlist",
       "--newline",
       "--continue",
+      "--color", "never",
       "--progress-template", "PROGRESS:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s",
       "-f", formatId,
     ];
@@ -278,15 +290,32 @@ export class StreamDownloader extends EventEmitter {
     this.childProcess = spawn(ytdlp, args, { stdio: ["ignore", "pipe", "pipe"] });
 
     let stderrBuffer = "";
+    let stdoutBuffer = "";
+    this.lastSpeedCheckTime = Date.now();
+    this.lastDownloadedBytes = this.task.downloadedBytes || 0;
+    this.rollingSpeed = 0;
 
     this.childProcess.stdout?.on("data", (chunk: Buffer) => {
-      const lines = chunk.toString().split("\n");
+      stdoutBuffer += chunk.toString();
+      const lines = stdoutBuffer.split("\n");
+      stdoutBuffer = lines.pop() || "";
+
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith("PROGRESS:")) {
+        const cleanLine = line.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "").trim();
+        if (cleanLine.startsWith("PROGRESS:")) {
           // e.g. PROGRESS:  6.4%|   1.18MiB/s|00:06|523264|8205364
-          const dataPart = trimmed.slice("PROGRESS:".length);
+          const dataPart = cleanLine.slice("PROGRESS:".length);
           const [pctStr, speedStr, etaStr, dlStr, totStr] = dataPart.split("|");
+
+          if (dlStr) {
+            const dl = parseInt(dlStr.trim(), 10);
+            if (!isNaN(dl) && dl >= 0) this.task.downloadedBytes = dl;
+          }
+
+          if (totStr) {
+            const tot = parseInt(totStr.trim(), 10);
+            if (!isNaN(tot) && tot > 0) this.task.fileSize = tot;
+          }
 
           if (pctStr) {
             const rawPct = parseFloat(pctStr.replace("%", "").trim());
@@ -295,22 +324,31 @@ export class StreamDownloader extends EventEmitter {
             }
           }
 
-          if (speedStr) {
-            this.task.speed = StreamDownloader.parseSpeedToBytes(speedStr);
+          // Dynamic speed calculation (rolling delta)
+          const now = Date.now();
+          const elapsedSec = (now - this.lastSpeedCheckTime) / 1000;
+          if (elapsedSec >= 0.4) {
+            const delta = this.task.downloadedBytes - this.lastDownloadedBytes;
+            if (delta > 0) {
+              this.rollingSpeed = Math.round(delta / elapsedSec);
+            }
+            this.lastSpeedCheckTime = now;
+            this.lastDownloadedBytes = this.task.downloadedBytes;
           }
 
-          if (etaStr) {
-            this.task.eta = StreamDownloader.parseEtaToSeconds(etaStr);
-          }
+          // Parse speed reported by yt-dlp, fallback to internal rolling speed
+          const parsedSpeed = StreamDownloader.parseSpeedToBytes(speedStr);
+          this.task.speed = parsedSpeed > 0 ? parsedSpeed : this.rollingSpeed;
 
-          if (dlStr) {
-            const dl = parseInt(dlStr.trim(), 10);
-            if (!isNaN(dl) && dl > 0) this.task.downloadedBytes = dl;
-          }
-
-          if (totStr) {
-            const tot = parseInt(totStr.trim(), 10);
-            if (!isNaN(tot) && tot > 0) this.task.fileSize = tot;
+          // Parse ETA reported by yt-dlp, fallback to formula
+          const parsedEta = StreamDownloader.parseEtaToSeconds(etaStr);
+          if (parsedEta > 0) {
+            this.task.eta = parsedEta;
+          } else if (this.task.fileSize > 0 && this.task.speed > 0) {
+            const remaining = this.task.fileSize - this.task.downloadedBytes;
+            this.task.eta = Math.max(0, Math.round(remaining / this.task.speed));
+          } else {
+            this.task.eta = 0;
           }
 
           this.task.updatedAt = Date.now();
