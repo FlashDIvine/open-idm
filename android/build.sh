@@ -36,18 +36,21 @@ apktool b "$ANDROID_DIR" -o "$DIST_DIR/LIDM-Android-unsigned.apk"
 
 # 3. Zipalign APK (4-byte alignment)
 echo "[+] Aligning APK boundaries with zipalign..."
-zipalign -p -f 4 "$DIST_DIR/LIDM-Android-unsigned.apk" "$DIST_DIR/LIDM-Android-v1.0.0.apk"
+zipalign -p -f 4 "$DIST_DIR/LIDM-Android-unsigned.apk" "$DIST_DIR/LIDM-Android-v1.1.0.apk"
+cp -f "$DIST_DIR/LIDM-Android-v1.1.0.apk" "$DIST_DIR/LIDM-Android-v1.0.0.apk"
 rm -f "$DIST_DIR/LIDM-Android-unsigned.apk"
 
 # 4. Sign APK with v1, v2, v3 schemes
 if [ -f "$KEYSTORE" ]; then
     echo "[+] Signing APK with debug.keystore (v1, v2, v3)..."
+    apksigner sign --ks "$KEYSTORE" --ks-pass pass:android "$DIST_DIR/LIDM-Android-v1.1.0.apk"
     apksigner sign --ks "$KEYSTORE" --ks-pass pass:android "$DIST_DIR/LIDM-Android-v1.0.0.apk"
-    apksigner verify -v "$DIST_DIR/LIDM-Android-v1.0.0.apk"
+    apksigner verify -v "$DIST_DIR/LIDM-Android-v1.1.0.apk"
 fi
 
 echo ""
 echo "================================================================="
 echo " Build Succeeded!"
-echo " Output APK: $DIST_DIR/LIDM-Android-v1.0.0.apk"
+echo " Output APK: $DIST_DIR/LIDM-Android-v1.1.0.apk"
+echo " (Also updated: $DIST_DIR/LIDM-Android-v1.0.0.apk)"
 echo "================================================================="

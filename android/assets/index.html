@@ -162,6 +162,32 @@
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
       position: relative;
       overflow: hidden;
+      transition: all 0.15s ease;
+    }
+    .task-card.selected {
+      background: #1e293b !important;
+      border: 1.5px solid #3b82f6 !important;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.35);
+    }
+    .card-checkbox {
+      width: 20px;
+      height: 20px;
+      accent-color: #3b82f6;
+      cursor: pointer;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+    .selection-appbar {
+      height: 56px;
+      padding: 0 16px;
+      background: #1e3a8a;
+      border-bottom: 1px solid #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
     .card-top {
       display: flex;
@@ -404,7 +430,7 @@
 <body>
 
   <!-- Top App Bar -->
-  <div class="appbar">
+  <div class="appbar" id="normalAppBar">
     <div class="app-brand">
       <img src="lidm.svg" class="app-logo" alt="LIDM">
       <div>
@@ -415,8 +441,23 @@
       </div>
     </div>
     <div class="app-actions">
+      <button class="icon-btn" id="btnToggleSelect" title="Blok / Multi-Select">☑️</button>
       <button class="icon-btn" id="btnPasteQuick" title="Paste and download">📋</button>
       <button class="icon-btn" id="btnOpenFolder" title="Downloads Folder">📁</button>
+    </div>
+  </div>
+
+  <!-- Selection App Bar (Appears when files are selected/blocked) -->
+  <div class="selection-appbar" id="selectionAppBar" style="display: none;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button class="icon-btn" id="btnCancelSelection" title="Cancel" style="font-size: 18px;">✕</button>
+      <span id="selectedCountText" style="font-weight: 700; font-size: 14px;">1 Diblok</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button class="icon-btn" id="btnSelectAllMobile" title="Select All (Blok Semua)">☑️</button>
+      <button class="icon-btn" id="btnBulkPause" title="Pause Selected">⏸️</button>
+      <button class="icon-btn" id="btnBulkResume" title="Resume Selected">▶️</button>
+      <button class="icon-btn" id="btnBulkDelete" style="color: #ef4444;" title="Delete Selected">🗑️</button>
     </div>
   </div>
 
@@ -523,6 +564,8 @@
   <script>
     let tasks = [];
     let activeCat = "All";
+    let selectedIds = new Set();
+    let isSelectMode = false;
 
     function showToast(msg) {
       if (window.AndroidBridge && window.AndroidBridge.showToast) {
@@ -542,9 +585,46 @@
       return (bytes / Math.pow(k, i)).toFixed(1) + " " + sizes[i];
     }
 
+    function toggleTaskSelection(id) {
+      if (selectedIds.has(id)) {
+        selectedIds.delete(id);
+      } else {
+        selectedIds.add(id);
+      }
+      isSelectMode = selectedIds.size > 0;
+      updateSelectionUI();
+      renderTasks();
+    }
+
+    function updateSelectionUI() {
+      const normalBar = document.getElementById("normalAppBar");
+      const selBar = document.getElementById("selectionAppBar");
+      const countText = document.getElementById("selectedCountText");
+
+      if (selectedIds.size > 0) {
+        normalBar.style.display = "none";
+        selBar.style.display = "flex";
+        countText.textContent = `${selectedIds.size} Diblok`;
+      } else {
+        normalBar.style.display = "flex";
+        selBar.style.display = "none";
+        isSelectMode = false;
+      }
+    }
+
     function renderTasks() {
       const container = document.getElementById("taskList");
       const filtered = tasks.filter(t => activeCat === "All" || t.category === activeCat);
+
+      // Clean up deleted tasks from selection
+      for (const id of Array.from(selectedIds)) {
+        if (!tasks.some(t => t.id === id)) {
+          selectedIds.delete(id);
+        }
+      }
+      if (selectedIds.size === 0 && !isSelectMode) {
+        updateSelectionUI();
+      }
 
       if (filtered.length === 0) {
         container.innerHTML = `
@@ -561,12 +641,46 @@
       container.innerHTML = "";
       filtered.forEach(task => {
         const card = document.createElement("div");
-        card.className = "task-card";
+        const isSelected = selectedIds.has(task.id);
+        card.className = "task-card" + (isSelected ? " selected" : "");
+        card.dataset.id = task.id;
+
+        // Long press handling to enter selection / blok mode on touch
+        let pressTimer = null;
+        let isLongPress = false;
+
+        card.addEventListener("touchstart", (e) => {
+          isLongPress = false;
+          pressTimer = setTimeout(() => {
+            isLongPress = true;
+            toggleTaskSelection(task.id);
+            if (navigator.vibrate) navigator.vibrate(40);
+          }, 450);
+        }, { passive: true });
+
+        card.addEventListener("touchend", () => {
+          clearTimeout(pressTimer);
+        });
+
+        card.addEventListener("touchmove", () => {
+          clearTimeout(pressTimer);
+        });
+
+        card.onclick = (e) => {
+          if (isLongPress) return;
+          if (isSelectMode || selectedIds.size > 0) {
+            e.preventDefault();
+            toggleTaskSelection(task.id);
+          }
+        };
 
         const icon = task.category === "Video" ? "🎬" : (task.category === "Music" ? "🎵" : "📦");
 
         card.innerHTML = `
           <div class="card-top">
+            ${isSelectMode || selectedIds.size > 0 ? `
+              <input type="checkbox" class="card-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleTaskSelection('${task.id}');">
+            ` : ''}
             <div class="card-media-icon">${icon}</div>
             <div class="card-meta">
               <div class="card-title">${task.fileName}</div>
@@ -588,10 +702,10 @@
           </div>
 
           <div class="card-actions">
-            ${task.status === 'downloading' ? `<button class="btn-sm" onclick="pauseTask('${task.id}')">⏸️ Pause</button>` : ''}
-            ${task.status === 'paused' ? `<button class="btn-sm btn-primary-sm" onclick="resumeTask('${task.id}')">▶️ Resume</button>` : ''}
-            ${task.status === 'completed' ? `<button class="btn-sm btn-primary-sm" onclick="openFile('${task.id}')">▶️ Play / Open</button>` : ''}
-            <button class="btn-sm" onclick="deleteTask('${task.id}')">🗑️ Delete</button>
+            ${task.status === 'downloading' ? `<button class="btn-sm" onclick="event.stopPropagation(); pauseTask('${task.id}')">⏸️ Pause</button>` : ''}
+            ${task.status === 'paused' ? `<button class="btn-sm btn-primary-sm" onclick="event.stopPropagation(); resumeTask('${task.id}')">▶️ Resume</button>` : ''}
+            ${task.status === 'completed' ? `<button class="btn-sm btn-primary-sm" onclick="event.stopPropagation(); openFile('${task.id}')">▶️ Play / Open</button>` : ''}
+            <button class="btn-sm" onclick="event.stopPropagation(); deleteTask('${task.id}')">🗑️ Delete</button>
           </div>
         `;
         container.appendChild(card);
@@ -630,6 +744,7 @@
 
     function deleteTask(id) {
       tasks = tasks.filter(x => x.id !== id);
+      selectedIds.delete(id);
       renderTasks();
       saveLocalTasks();
       showToast("Download removed");
@@ -655,6 +770,73 @@
       } catch {}
     }
 
+    // Selection App Bar Actions
+    document.getElementById("btnCancelSelection").onclick = () => {
+      selectedIds.clear();
+      isSelectMode = false;
+      updateSelectionUI();
+      renderTasks();
+    };
+
+    document.getElementById("btnToggleSelect").onclick = () => {
+      isSelectMode = !isSelectMode;
+      if (!isSelectMode) selectedIds.clear();
+      updateSelectionUI();
+      renderTasks();
+      if (isSelectMode) showToast("Mode Blok Aktif: ketuk atau tahan kartu untuk memilih");
+    };
+
+    document.getElementById("btnSelectAllMobile").onclick = () => {
+      const filtered = tasks.filter(t => activeCat === "All" || t.category === activeCat);
+      const allSelected = filtered.length > 0 && filtered.every(t => selectedIds.has(t.id));
+      if (allSelected) {
+        filtered.forEach(t => selectedIds.delete(t.id));
+      } else {
+        filtered.forEach(t => selectedIds.add(t.id));
+      }
+      updateSelectionUI();
+      renderTasks();
+    };
+
+    document.getElementById("btnBulkDelete").onclick = () => {
+      if (selectedIds.size === 0) return;
+      const count = selectedIds.size;
+      tasks = tasks.filter(t => !selectedIds.has(t.id));
+      selectedIds.clear();
+      isSelectMode = false;
+      saveLocalTasks();
+      updateSelectionUI();
+      renderTasks();
+      showToast(`${count} file dihapus`);
+    };
+
+    document.getElementById("btnBulkPause").onclick = () => {
+      let count = 0;
+      tasks.forEach(t => {
+        if (selectedIds.has(t.id) && t.status === "downloading") {
+          t.status = "paused";
+          t.speed = 0;
+          count++;
+        }
+      });
+      saveLocalTasks();
+      renderTasks();
+      showToast(`${count} file dijeda`);
+    };
+
+    document.getElementById("btnBulkResume").onclick = () => {
+      let count = 0;
+      tasks.forEach(t => {
+        if (selectedIds.has(t.id) && (t.status === "paused" || t.status === "error")) {
+          t.status = "downloading";
+          count++;
+        }
+      });
+      saveLocalTasks();
+      renderTasks();
+      showToast(`${count} file dilanjutkan`);
+    };
+
     // Category click
     document.querySelectorAll(".chip").forEach(c => {
       c.onclick = () => {
@@ -671,6 +853,15 @@
     const sheetFileName = document.getElementById("sheetFileName");
     const sheetVideoCard = document.getElementById("sheetVideoCard");
     const formatGroup = document.getElementById("formatGroup");
+    const sheetFormat = document.getElementById("sheetFormat");
+
+    // Sync file extension when format option changes
+    sheetFormat.onchange = () => {
+      const isAud = sheetFormat.value === "mp3";
+      if (sheetFileName.value) {
+        sheetFileName.value = sheetFileName.value.replace(/\.[a-zA-Z0-9]+$/, "") + (isAud ? ".mp3" : ".mp4");
+      }
+    };
 
     function openAddSheet(initialUrl = "") {
       sheet.classList.add("show");
@@ -738,8 +929,10 @@
       if (isStream) {
         sheetVideoCard.style.display = "flex";
         formatGroup.style.display = "flex";
-        document.getElementById("sheetVideoTitle").textContent = "Streaming Video (" + new URL(url).hostname + ")";
-        sheetFileName.value = "Video_" + Date.now() + ".mp4";
+        const host = new URL(url).hostname;
+        document.getElementById("sheetVideoTitle").textContent = "Streaming Video (" + host + ")";
+        const isAud = sheetFormat.value === "mp3";
+        sheetFileName.value = "Video_" + Date.now() + (isAud ? ".mp3" : ".mp4");
       } else {
         sheetVideoCard.style.display = "none";
         formatGroup.style.display = "none";
@@ -757,9 +950,16 @@
       const url = sheetUrl.value.trim();
       if (!url) return showToast("Please enter a valid URL");
 
-      const fn = sheetFileName.value.trim() || ("download_" + Date.now() + ".bin");
-      const isStream = /(youtube\.com|youtu\.be|tiktok\.com|instagram\.com)/i.test(url);
-      const isAudio = document.getElementById("sheetFormat").value === "mp3";
+      const isStream = /(youtube\.com|youtu\.be|tiktok\.com|instagram\.com|twitter\.com|x\.com)/i.test(url);
+      const isAudio = isStream && sheetFormat.value === "mp3";
+      let fn = sheetFileName.value.trim() || ("download_" + Date.now() + (isAudio ? ".mp3" : ".mp4"));
+
+      if (isAudio && !fn.endsWith(".mp3")) {
+        fn = fn.replace(/\.[a-zA-Z0-9]+$/, "") + ".mp3";
+      } else if (!isAudio && fn.endsWith(".mp3") && isStream) {
+        fn = fn.replace(/\.[a-zA-Z0-9]+$/, "") + ".mp4";
+      }
+
       const cat = isAudio ? "Music" : (isStream || fn.endsWith(".mp4") ? "Video" : "Compressed");
 
       // Hand off to Android Native DownloadManager
@@ -787,6 +987,20 @@
       sheet.classList.remove("show");
       showToast("Download started: " + fn);
     };
+
+    // Receive shared URL from YouTube, TikTok, or Chrome Share Sheet
+    window.onReceiveSharedUrl = function(sharedText) {
+      if (!sharedText) return;
+      const match = sharedText.match(/https?:\/\/[^\s]+/i);
+      const url = match ? match[0] : sharedText;
+      openAddSheet(url);
+      showToast("Link received from share sheet! 🚀");
+    };
+
+    // Initialize
+    loadLocalTasks();
+    renderTasks();
+  </script>
 
     // Receive shared URL from YouTube, TikTok, or Chrome Share Sheet
     window.onReceiveSharedUrl = function(sharedText) {
