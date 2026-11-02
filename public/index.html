@@ -208,6 +208,20 @@
       flex: 1;
       background: #ffffff;
       overflow-y: auto;
+      position: relative;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Drag-to-select marquee box */
+    .selection-box {
+      position: absolute;
+      border: 1.5px solid #2563eb;
+      background: rgba(37, 99, 235, 0.18);
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 99;
+      display: none;
     }
 
     table {
@@ -635,7 +649,8 @@
       </div>
 
       <!-- Downloads Table -->
-      <div class="table-wrapper">
+      <div class="table-wrapper" id="tableWrapper">
+        <div id="dragSelectionBox" class="selection-box"></div>
         <table id="taskTable">
           <thead>
             <tr>
@@ -912,6 +927,7 @@
     }
 
     function handleRowClick(task, index, event, filtered) {
+      if (wasDragging) return;
       if (event.ctrlKey || event.metaKey) {
         // Ctrl+Click: Toggle individual row
         if (selectedIds.has(task.id)) {
@@ -986,6 +1002,7 @@
 
       filtered.forEach((task, index) => {
         const tr = document.createElement("tr");
+        tr.dataset.id = task.id;
         const isSelected = selectedIds.has(task.id);
         if (isSelected) tr.classList.add("selected");
 
@@ -1210,6 +1227,143 @@
           document.getElementById("btnDelete").click();
         }
         return;
+      }
+    });
+
+    // Drag-to-Select (Rubberband Selection Marquee)
+    let isMouseDown = false;
+    let isDragging = false;
+    let wasDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let initialSelectedBeforeDrag = new Set();
+    const tableWrapper = document.getElementById("tableWrapper");
+    const selectionBox = document.getElementById("dragSelectionBox");
+
+    tableWrapper.addEventListener("mousedown", (e) => {
+      // Only primary left button
+      if (e.button !== 0) return;
+
+      // Don't drag if clicking buttons, inputs, links, or action icons
+      const targetTag = e.target.tagName.toLowerCase();
+      if (["button", "input", "a", "select"].includes(targetTag) || e.target.closest("button") || e.target.closest("input")) {
+        return;
+      }
+
+      isMouseDown = true;
+      isDragging = false;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+
+      if (e.ctrlKey || e.metaKey || e.shiftKey) {
+        initialSelectedBeforeDrag = new Set(selectedIds);
+      } else {
+        // If clicking on an unselected row or background, prepare clean selection
+        const clickedRow = e.target.closest("tr");
+        const clickedId = clickedRow ? clickedRow.dataset.id : null;
+        if (!clickedId || !selectedIds.has(clickedId)) {
+          initialSelectedBeforeDrag = new Set();
+        } else {
+          initialSelectedBeforeDrag = new Set(selectedIds);
+        }
+      }
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isMouseDown) return;
+
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      const dist = Math.hypot(deltaX, deltaY);
+
+      if (!isDragging && dist > 5) {
+        isDragging = true;
+        selectionBox.style.display = "block";
+      }
+
+      if (isDragging) {
+        // Compute bounding box coordinates relative to tableWrapper container
+        const wrapRect = tableWrapper.getBoundingClientRect();
+        const startRelX = dragStartX - wrapRect.left + tableWrapper.scrollLeft;
+        const startRelY = dragStartY - wrapRect.top + tableWrapper.scrollTop;
+        const currentRelX = e.clientX - wrapRect.left + tableWrapper.scrollLeft;
+        const currentRelY = e.clientY - wrapRect.top + tableWrapper.scrollTop;
+
+        const boxLeft = Math.min(startRelX, currentRelX);
+        const boxTop = Math.min(startRelY, currentRelY);
+        const boxWidth = Math.abs(currentRelX - startRelX);
+        const boxHeight = Math.abs(currentRelY - startRelY);
+
+        selectionBox.style.left = boxLeft + "px";
+        selectionBox.style.top = boxTop + "px";
+        selectionBox.style.width = boxWidth + "px";
+        selectionBox.style.height = boxHeight + "px";
+
+        // Viewport rect for collision detection with row bounding rects
+        const selRect = {
+          left: Math.min(dragStartX, e.clientX),
+          right: Math.max(dragStartX, e.clientX),
+          top: Math.min(dragStartY, e.clientY),
+          bottom: Math.max(dragStartY, e.clientY),
+        };
+
+        // Auto-scroll tableWrapper when cursor is dragged near edges
+        if (e.clientY < wrapRect.top + 35) {
+          tableWrapper.scrollTop -= 12;
+        } else if (e.clientY > wrapRect.bottom - 35) {
+          tableWrapper.scrollTop += 12;
+        }
+
+        // Test intersection with each table row
+        const rows = tableWrapper.querySelectorAll("#tableBody tr");
+        const newSelection = new Set(initialSelectedBeforeDrag);
+
+        rows.forEach((tr) => {
+          const id = tr.dataset.id;
+          if (!id) return;
+          const r = tr.getBoundingClientRect();
+
+          // Horizontal & vertical overlap check
+          const intersects = !(
+            r.right < selRect.left ||
+            r.left > selRect.right ||
+            r.bottom < selRect.top ||
+            r.top > selRect.bottom
+          );
+
+          if (intersects) {
+            newSelection.add(id);
+          } else if (!initialSelectedBeforeDrag.has(id)) {
+            newSelection.delete(id);
+          }
+        });
+
+        // Fast visual update of rows & checkboxes
+        selectedIds = newSelection;
+        rows.forEach((tr) => {
+          const id = tr.dataset.id;
+          const isSel = selectedIds.has(id);
+          tr.classList.toggle("selected", isSel);
+          const chk = tr.querySelector(".task-checkbox");
+          if (chk) chk.checked = isSel;
+        });
+
+        updateToolbarButtons();
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isMouseDown) {
+        if (isDragging) {
+          wasDragging = true;
+          setTimeout(() => { wasDragging = false; }, 80);
+          showToast(`Diblok ${selectedIds.size} file dengan kursor`, "🎯");
+        }
+        isMouseDown = false;
+        isDragging = false;
+        selectionBox.style.display = "none";
+        renderTasks();
+        updateToolbarButtons();
       }
     });
 
