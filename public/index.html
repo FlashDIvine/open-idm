@@ -7,16 +7,20 @@
   <style>
     :root {
       --bg: #ece9d8;
-      --win-bg: #f5f6f7;
+      --win-bg: #f8fafc;
       --header-bg: #0058e6;
-      --toolbar-bg: #f9f9f9;
+      --toolbar-bg: #f1f5f9;
       --sidebar-bg: #ffffff;
-      --border: #c0c0c0;
-      --primary: #0055ea;
-      --primary-hover: #0045be;
-      --text: #1e1e1e;
-      --highlight: #fff380;
-      --segment-bg: #2a75d3;
+      --border: #cbd5e1;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --highlight: #fef08a;
+      --segment-bg: #3b82f6;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; font-size: 13px; color: var(--text); }
@@ -30,49 +34,57 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
+      user-select: none;
     }
 
     .app-window {
       width: 100%;
       height: 100%;
       background: var(--win-bg);
-      border-radius: 0;
-      box-shadow: none;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      border: none;
     }
 
     /* Window Header */
     .titlebar {
-      background: linear-gradient(180deg, #1f64d0 0%, #004ac2 100%);
+      background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 50%, #2563eb 100%);
       color: white;
       padding: 8px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      user-select: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     .titlebar span { color: white; font-weight: 600; }
     .badge-unlimited {
-      background: #ffcc00;
-      color: #000;
+      background: #facc15;
+      color: #713f12;
       font-size: 10px;
       font-weight: 800;
-      padding: 2px 6px;
+      padding: 2px 8px;
       border-radius: 4px;
       margin-left: 8px;
+      letter-spacing: 0.5px;
+    }
+    .badge-streaming {
+      background: #ec4899;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-left: 6px;
     }
 
     /* Toolbar */
     .toolbar {
-      background: #f4f4f4;
+      background: #f8fafc;
       border-bottom: 1px solid var(--border);
       padding: 6px 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .tool-btn {
@@ -80,22 +92,25 @@
       flex-direction: column;
       align-items: center;
       gap: 3px;
-      padding: 6px 12px;
+      padding: 6px 10px;
       background: transparent;
       border: 1px solid transparent;
-      border-radius: 4px;
+      border-radius: 5px;
       cursor: pointer;
       font-size: 11px;
-      transition: all 0.15s;
+      transition: all 0.15s ease;
+      min-width: 58px;
     }
-    .tool-btn:hover { background: #e3edfa; border-color: #b0cfee; }
-    .tool-btn:active { background: #cce2f7; }
+    .tool-btn:hover { background: #e2e8f0; border-color: #cbd5e1; }
+    .tool-btn:active { background: #cbd5e1; }
+    .tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .tool-btn:disabled:hover { background: transparent; border-color: transparent; }
     .tool-icon { font-size: 16px; }
 
     /* Docked IDM SearchBar (CMainDlgSearchBar) */
     .searchbar-panel {
       background: #fefce8;
-      border-bottom: 1px solid #e2d98d;
+      border-bottom: 1px solid #fde047;
       padding: 6px 14px;
       display: flex;
       align-items: center;
@@ -104,32 +119,36 @@
     }
     .searchbar-panel.hidden { display: none; }
     .search-input {
-      padding: 4px 10px;
-      border: 1px solid #aaa;
-      border-radius: 3px;
-      width: 300px;
+      padding: 5px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      width: 320px;
       outline: none;
-    }
-    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 4px rgba(0,85,234,0.4); }
-
-    .btn-action {
-      padding: 4px 12px;
       background: #fff;
-      border: 1px solid #aaa;
-      border-radius: 3px;
-      cursor: pointer;
       font-size: 12px;
     }
-    .btn-action:hover { background: #f0f0f0; border-color: #777; }
+    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+
+    .btn-action {
+      padding: 5px 12px;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .btn-action:hover { background: #f1f5f9; border-color: #94a3b8; }
     .btn-close {
       margin-left: auto;
       background: none;
       border: none;
-      font-size: 16px;
+      font-size: 18px;
       cursor: pointer;
-      color: #666;
+      color: #64748b;
+      padding: 0 4px;
     }
-    .btn-close:hover { color: #d00; }
+    .btn-close:hover { color: #dc2626; }
 
     /* Main Container */
     .main-content {
@@ -140,34 +159,54 @@
 
     /* Left Sidebar: Categories */
     .sidebar {
-      width: 200px;
-      background: #fff;
+      width: 210px;
+      background: #ffffff;
       border-right: 1px solid var(--border);
-      padding: 10px 0;
+      padding: 12px 0;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
     .cat-title {
       font-size: 11px;
       font-weight: 700;
-      color: #777;
+      color: var(--text-muted);
       text-transform: uppercase;
-      padding: 6px 14px;
+      padding: 6px 16px;
+      letter-spacing: 0.5px;
     }
     .cat-item {
-      padding: 6px 16px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .cat-item-left {
       display: flex;
       align-items: center;
       gap: 8px;
-      cursor: pointer;
-      user-select: none;
     }
-    .cat-item:hover { background: #f0f4f9; }
-    .cat-item.active { background: #e1ecf9; font-weight: 600; color: var(--primary); }
+    .cat-item:hover { background: #f1f5f9; }
+    .cat-item.active { background: #e0f2fe; font-weight: 600; color: var(--primary); }
+    .cat-badge {
+      background: #e2e8f0;
+      color: #475569;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+    .cat-item.active .cat-badge {
+      background: #bae6fd;
+      color: #0369a1;
+    }
 
     /* Download Table */
     .table-wrapper {
       flex: 1;
-      background: #fff;
+      background: #ffffff;
       overflow-y: auto;
     }
 
@@ -177,108 +216,299 @@
       text-align: left;
     }
     th {
-      background: #f7f7f7;
+      background: #f8fafc;
       border-bottom: 1px solid var(--border);
-      border-right: 1px solid #e0e0e0;
-      padding: 6px 10px;
+      border-right: 1px solid #e2e8f0;
+      padding: 7px 12px;
       font-size: 11px;
       font-weight: 600;
+      color: #475569;
       position: sticky;
       top: 0;
-      user-select: none;
+      z-index: 10;
     }
     td {
-      padding: 6px 10px;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 8px 12px;
+      border-bottom: 1px solid #f1f5f9;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      vertical-align: middle;
     }
-    tr:hover { background: #f5f8fd; cursor: pointer; }
-    tr.selected { background: #316ac5 !important; }
-    tr.selected td { color: #fff !important; }
-    tr.selected span { color: #fff !important; }
+    tr:hover { background: #f8fafc; cursor: pointer; }
+    tr.selected { background: #e0f2fe !important; }
+    tr.selected td { color: #0f172a; }
 
-    /* Multi-color segment progress bar (IDM style) */
+    /* Task row thumbnail / icon */
+    .task-title-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 280px;
+    }
+    .task-thumb {
+      width: 38px;
+      height: 24px;
+      border-radius: 3px;
+      object-fit: cover;
+      background: #000;
+      flex-shrink: 0;
+    }
+    .task-name-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    /* Progress bar */
     .progress-bar-container {
-      width: 130px;
+      width: 140px;
       height: 14px;
-      background: #e8e8e8;
-      border-radius: 2px;
+      background: #e2e8f0;
+      border-radius: 3px;
       overflow: hidden;
       position: relative;
-      border: 1px solid #b5b5b5;
     }
     .segment-bar {
       height: 100%;
-      background: linear-gradient(180deg, #51a4ff 0%, #1572e8 100%);
-      transition: width 0.3s;
+      background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+      transition: width 0.2s ease;
     }
+    .segment-bar.completed { background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%); }
+    .segment-bar.error { background: #ef4444; }
+    .segment-bar.paused { background: #f59e0b; }
     .progress-text {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
       font-size: 9px;
-      font-weight: bold;
+      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #000;
+      color: #0f172a;
     }
-    tr.selected .progress-text { color: #fff; }
+
+    /* Status Pill Badges */
+    .status-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+    .status-completed { background: #dcfce7; color: #15803d; }
+    .status-downloading { background: #dbeafe; color: #1d4ed8; }
+    .status-paused { background: #fef3c7; color: #b45309; }
+    .status-error { background: #fee2e2; color: #b91c1c; }
+    .status-queued { background: #f1f5f9; color: #64748b; }
+
+    /* Action buttons in row */
+    .btn-row-action {
+      background: transparent;
+      border: none;
+      padding: 3px 6px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 13px;
+      opacity: 0.7;
+      transition: all 0.15s;
+    }
+    .btn-row-action:hover { opacity: 1; background: #e2e8f0; }
 
     /* Status Bar */
     .statusbar {
-      background: #f0f0f0;
+      background: #f1f5f9;
       border-top: 1px solid var(--border);
-      padding: 4px 14px;
+      padding: 5px 14px;
       font-size: 11px;
-      color: #555;
+      color: #475569;
       display: flex;
       justify-content: space-between;
+      align-items: center;
     }
 
     /* Modal Dialogs */
     .modal-backdrop {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.4);
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(2px);
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 99;
+      z-index: 100;
     }
     .modal-backdrop.hidden { display: none; }
     .modal {
-      width: 480px;
-      background: #fff;
-      border-radius: 6px;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+      width: 520px;
+      max-width: 90vw;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
       overflow: hidden;
+      animation: modalFadeIn 0.15s ease-out;
     }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
     .modal-hdr {
-      background: #0055ea;
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
       color: #fff;
-      padding: 10px 14px;
+      padding: 12px 18px;
       font-weight: 600;
       display: flex;
       justify-content: space-between;
+      align-items: center;
     }
-    .modal-bdy { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .modal-bdy { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
     .form-group { display: flex; flex-direction: column; gap: 4px; }
-    .form-group label { font-weight: 600; font-size: 12px; }
-    .form-input { padding: 6px 10px; border: 1px solid #aaa; border-radius: 4px; outline: none; }
-    .form-input:focus { border-color: var(--primary); }
+    .form-group label { font-weight: 600; font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      outline: none;
+      background: #fff;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+    .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+
+    /* Video Preview Card in Modal */
+    .video-preview-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .preview-thumb-wrapper {
+      position: relative;
+      width: 100px;
+      height: 60px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #0f172a;
+      flex-shrink: 0;
+    }
+    .preview-thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .preview-duration-badge {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 2px;
+    }
+    .preview-meta {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden;
+    }
+    .preview-title {
+      font-weight: 600;
+      font-size: 12px;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .preview-source {
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Probe loading spinner */
+    .probe-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #2563eb;
+      padding: 6px 0;
+    }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #cbd5e1;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     .modal-ftr {
-      padding: 10px 16px;
-      background: #f4f4f4;
-      border-top: 1px solid #e0e0e0;
+      padding: 12px 18px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
       display: flex;
       justify-content: flex-end;
-      gap: 8px;
+      gap: 10px;
     }
-    .btn-primary { background: #0055ea; color: #fff; border: 1px solid #0045be; border-radius: 4px; padding: 6px 16px; cursor: pointer; }
-    .btn-primary:hover { background: #0045be; }
-    .btn-secondary { background: #fff; border: 1px solid #aaa; border-radius: 4px; padding: 6px 14px; cursor: pointer; }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border: 1px solid var(--primary-hover);
+      border-radius: 5px;
+      padding: 7px 18px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary {
+      background: #fff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      padding: 7px 16px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-secondary:hover { background: #f1f5f9; }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 20px;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 6px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+      font-size: 12px;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
@@ -287,43 +517,57 @@
     <!-- Titlebar -->
     <div class="titlebar">
       <div style="display: flex; align-items: center;">
-        <span>Linux Internet Download Manager (LIDM)</span>
-        <span class="badge-unlimited">UNLIMITED LINUX EDITION</span>
+        <span>Internet Download Manager (LIDM)</span>
+        <span class="badge-unlimited">UNLIMITED LINUX</span>
+        <span class="badge-streaming">STREAM ENGINE</span>
       </div>
-      <span style="font-size: 11px; font-weight: normal; opacity: 0.85;">Powered by REA &amp; IDM Reverse-Engineered Core</span>
+      <span style="font-size: 11px; font-weight: normal; opacity: 0.9;">YouTube • TikTok • Direct HTTP • MCP Server</span>
     </div>
 
     <!-- Main Toolbar -->
     <div class="toolbar">
-      <button class="tool-btn" id="btnOpenAddModal">
+      <button class="tool-btn" id="btnOpenAddModal" title="Add new download link">
         <span class="tool-icon">➕</span>
         <span>Add URL</span>
       </button>
-      <button class="tool-btn" id="btnResume">
+      <button class="tool-btn" id="btnPasteDownload" title="Paste link from clipboard and download">
+        <span class="tool-icon">📋</span>
+        <span>Paste URL</span>
+      </button>
+      <div style="width: 1px; height: 28px; background: #cbd5e1; margin: 0 2px;"></div>
+      <button class="tool-btn" id="btnResume" title="Resume selected download" disabled>
         <span class="tool-icon">▶️</span>
         <span>Resume</span>
       </button>
-      <button class="tool-btn" id="btnPause">
+      <button class="tool-btn" id="btnPause" title="Pause selected download" disabled>
         <span class="tool-icon">⏸️</span>
         <span>Pause</span>
       </button>
-      <button class="tool-btn" id="btnDelete">
+      <button class="tool-btn" id="btnOpenFile" title="Open downloaded file" disabled>
+        <span class="tool-icon">📂</span>
+        <span>Open File</span>
+      </button>
+      <button class="tool-btn" id="btnOpenFolder" title="Open containing folder" disabled>
+        <span class="tool-icon">📁</span>
+        <span>Folder</span>
+      </button>
+      <button class="tool-btn" id="btnDelete" title="Delete selected download" disabled>
         <span class="tool-icon">🗑️</span>
         <span>Delete</span>
       </button>
-      <div style="width: 1px; height: 32px; background: #ddd; margin: 0 4px;"></div>
-      <button class="tool-btn" id="btnToggleSearch">
+      <div style="width: 1px; height: 28px; background: #cbd5e1; margin: 0 2px;"></div>
+      <button class="tool-btn" id="btnToggleSearch" title="Toggle Search Bar (Ctrl+F)">
         <span class="tool-icon">🔍</span>
-        <span>Find (Ctrl-F)</span>
+        <span>Find</span>
       </button>
-      <button class="tool-btn" id="btnSearchNext">
+      <button class="tool-btn" id="btnSearchNext" title="Find Next (F3)">
         <span class="tool-icon">⏭️</span>
-        <span>Find Next (F3)</span>
+        <span>Next</span>
       </button>
     </div>
 
-    <!-- Docked SearchBar (CMainDlgSearchBar) -->
-    <div class="searchbar-panel" id="searchBar">
+    <!-- Docked IDM SearchBar (CMainDlgSearchBar) -->
+    <div class="searchbar-panel hidden" id="searchBar">
       <strong>Find:</strong>
       <input type="text" id="searchInput" class="search-input" placeholder="Search filename, URL, domain, or description...">
       <button class="btn-action" id="btnFindNext">Find Next (F3)</button>
@@ -336,12 +580,30 @@
       <!-- Left Categories Tree -->
       <div class="sidebar">
         <div class="cat-title">Categories</div>
-        <div class="cat-item active" data-cat="All">📂 All Downloads</div>
-        <div class="cat-item" data-cat="Compressed">📦 Compressed</div>
-        <div class="cat-item" data-cat="Documents">📄 Documents</div>
-        <div class="cat-item" data-cat="Music">🎵 Music</div>
-        <div class="cat-item" data-cat="Programs">⚙️ Programs</div>
-        <div class="cat-item" data-cat="Video">🎬 Video</div>
+        <div class="cat-item active" data-cat="All">
+          <div class="cat-item-left">📂 <span>All Downloads</span></div>
+          <span class="cat-badge" id="badgeAll">0</span>
+        </div>
+        <div class="cat-item" data-cat="Video">
+          <div class="cat-item-left">🎬 <span>Video</span></div>
+          <span class="cat-badge" id="badgeVideo">0</span>
+        </div>
+        <div class="cat-item" data-cat="Music">
+          <div class="cat-item-left">🎵 <span>Music / Audio</span></div>
+          <span class="cat-badge" id="badgeMusic">0</span>
+        </div>
+        <div class="cat-item" data-cat="Compressed">
+          <div class="cat-item-left">📦 <span>Compressed</span></div>
+          <span class="cat-badge" id="badgeCompressed">0</span>
+        </div>
+        <div class="cat-item" data-cat="Documents">
+          <div class="cat-item-left">📄 <span>Documents</span></div>
+          <span class="cat-badge" id="badgeDocuments">0</span>
+        </div>
+        <div class="cat-item" data-cat="Programs">
+          <div class="cat-item-left">⚙️ <span>Programs</span></div>
+          <span class="cat-badge" id="badgePrograms">0</span>
+        </div>
       </div>
 
       <!-- Downloads Table -->
@@ -349,14 +611,15 @@
         <table id="taskTable">
           <thead>
             <tr>
-              <th style="width: 240px;">File Name</th>
-              <th style="width: 80px;">Size</th>
-              <th style="width: 140px;">Progress</th>
-              <th style="width: 90px;">Status</th>
-              <th style="width: 90px;">Speed</th>
-              <th style="width: 70px;">ETA</th>
-              <th style="width: 60px;">Threads</th>
-              <th style="width: 220px;">Download URL</th>
+              <th style="width: 280px;">File / Media Name</th>
+              <th style="width: 85px;">Size</th>
+              <th style="width: 150px;">Progress</th>
+              <th style="width: 95px;">Status</th>
+              <th style="width: 95px;">Speed</th>
+              <th style="width: 75px;">ETA</th>
+              <th style="width: 90px;">Engine / Mode</th>
+              <th style="width: 200px;">Download Link</th>
+              <th style="width: 60px; text-align: center;">Actions</th>
             </tr>
           </thead>
           <tbody id="tableBody"></tbody>
@@ -366,8 +629,9 @@
 
     <!-- Status Bar -->
     <div class="statusbar">
-      <span id="statusSummary">0 tasks</span>
-      <span id="searchStatus">Press Ctrl+F to find, F3 to jump next</span>
+      <span id="statusSummary">0 downloads</span>
+      <span id="speedSummary">Speed: --</span>
+      <span id="searchStatus">Ctrl+F: Find | F3: Jump Next | Double-click: Open File</span>
     </div>
   </div>
 
@@ -375,43 +639,77 @@
   <div class="modal-backdrop hidden" id="addModal">
     <div class="modal">
       <div class="modal-hdr">
-        <span>Enter New Address to Download</span>
-        <span style="cursor: pointer;" id="closeAddModal">&times;</span>
+        <span>Enter URL to Download</span>
+        <span style="cursor: pointer; font-size: 18px;" id="closeAddModal">&times;</span>
       </div>
       <div class="modal-bdy">
         <div class="form-group">
-          <label>Address (URL):</label>
-          <input type="text" id="modalUrl" class="form-input" placeholder="https://example.com/file.zip">
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <div class="form-group" style="flex: 2;">
-            <label>Save As (File Name):</label>
-            <input type="text" id="modalFileName" class="form-input" placeholder="file.zip">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label>Address (URL):</label>
+            <button id="btnModalPaste" style="background: none; border: none; color: var(--primary); font-size: 11px; font-weight: 600; cursor: pointer;">📋 Paste from Clipboard</button>
           </div>
-          <div class="form-group" style="flex: 1;">
-            <label>Category:</label>
-            <select id="modalCategory" class="form-input">
-              <option value="Compressed">Compressed</option>
-              <option value="Documents">Documents</option>
-              <option value="Music">Music</option>
-              <option value="Programs">Programs</option>
-              <option value="Video">Video</option>
+          <input type="text" id="modalUrl" class="form-input" placeholder="https://www.youtube.com/watch?v=... or https://example.com/file.zip" autofocus>
+        </div>
+
+        <!-- Probe Loading Indicator -->
+        <div id="probeLoading" class="probe-loading" style="display: none;">
+          <div class="spinner"></div>
+          <span id="probeLoadingText">Analyzing stream metadata and formats...</span>
+        </div>
+
+        <!-- Video Stream Preview Card -->
+        <div id="videoPreviewCard" class="video-preview-card" style="display: none;">
+          <div class="preview-thumb-wrapper">
+            <img id="previewThumb" class="preview-thumb-img" src="" alt="Thumbnail">
+            <span id="previewDuration" class="preview-duration-badge">--:--</span>
+          </div>
+          <div class="preview-meta">
+            <div id="previewTitle" class="preview-title">Video Title</div>
+            <div id="previewSource" class="preview-source">
+              <span id="previewPlatformBadge">🎬 Streaming Media</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stream Format Selector -->
+        <div id="streamFormatGroup" class="form-group" style="display: none;">
+          <label>Quality &amp; Format:</label>
+          <select id="modalStreamFormat" class="form-input"></select>
+        </div>
+
+        <!-- Direct File Options -->
+        <div id="directFileOptions">
+          <div style="display: flex; gap: 8px;">
+            <div class="form-group" style="flex: 2;">
+              <label>Save As (File Name):</label>
+              <input type="text" id="modalFileName" class="form-input" placeholder="filename.ext">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label>Category:</label>
+              <select id="modalCategory" class="form-input">
+                <option value="Video">Video</option>
+                <option value="Music">Music</option>
+                <option value="Compressed">Compressed</option>
+                <option value="Documents">Documents</option>
+                <option value="Programs">Programs</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" id="segmentsGroup">
+            <label>Multi-Threaded Turbo Segments:</label>
+            <select id="modalSegments" class="form-input">
+              <option value="1">1 Connection (Single stream)</option>
+              <option value="4">4 Connections</option>
+              <option value="8" selected>8 Connections (Recommended)</option>
+              <option value="16">16 Connections (Fast Acceleration)</option>
+              <option value="32">32 Connections (Maximum Turbo Acceleration)</option>
             </select>
           </div>
         </div>
+
         <div class="form-group">
-          <label>Max Connections / Segments (Unlimited 1-32):</label>
-          <select id="modalSegments" class="form-input">
-            <option value="1">1 (Single Stream)</option>
-            <option value="4">4 Connections</option>
-            <option value="8" selected>8 Connections (Recommended)</option>
-            <option value="16">16 Connections (Fast)</option>
-            <option value="32">32 Connections (Maximum Turbo Acceleration)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Description (Optional):</label>
-          <input type="text" id="modalDesc" class="form-input" placeholder="Notes or tags">
+          <label>Description / Notes (Optional):</label>
+          <input type="text" id="modalDesc" class="form-input" placeholder="Optional notes or tags">
         </div>
       </div>
       <div class="modal-ftr">
@@ -421,22 +719,22 @@
     </div>
   </div>
 
-  <!-- Search Settings Modal (CMainDlgSearchSettings) -->
+  <!-- Search Settings Modal -->
   <div class="modal-backdrop hidden" id="searchSettingsModal">
     <div class="modal" style="width: 380px;">
       <div class="modal-hdr">
         <span>IDM Search Settings</span>
-        <span style="cursor: pointer;" id="closeSettingsModal">&times;</span>
+        <span style="cursor: pointer; font-size: 18px;" id="closeSettingsModal">&times;</span>
       </div>
       <div class="modal-bdy">
-        <strong>Search Targets:</strong>
-        <label><input type="checkbox" id="chkFn" checked> File name or part of the name</label>
-        <label><input type="checkbox" id="chkDesc"> Description or part of description</label>
-        <label><input type="checkbox" id="chkUrl"> Site name / Download link / Referer</label>
-        <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
-        <strong>Search Options:</strong>
-        <label><input type="checkbox" id="chkCase"> Match case</label>
-        <label><input type="checkbox" id="chkWhole"> Match whole string only</label>
+        <strong style="color: #475569; font-size: 11px; text-transform: uppercase;">Search Targets:</strong>
+        <label style="display: flex; gap: 6px; align-items: center;"><input type="checkbox" id="chkFn" checked> File name or part of the name</label>
+        <label style="display: flex; gap: 6px; align-items: center;"><input type="checkbox" id="chkDesc"> Description or part of description</label>
+        <label style="display: flex; gap: 6px; align-items: center;"><input type="checkbox" id="chkUrl"> Site name / Download link / Referer</label>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 4px 0;">
+        <strong style="color: #475569; font-size: 11px; text-transform: uppercase;">Search Options:</strong>
+        <label style="display: flex; gap: 6px; align-items: center;"><input type="checkbox" id="chkCase"> Match case</label>
+        <label style="display: flex; gap: 6px; align-items: center;"><input type="checkbox" id="chkWhole"> Match whole string only</label>
       </div>
       <div class="modal-ftr">
         <button class="btn-primary" id="btnSaveSettings">OK</button>
@@ -444,10 +742,18 @@
     </div>
   </div>
 
+  <!-- Toast Notification -->
+  <div class="toast" id="toastBox">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMsg">Notification message</span>
+  </div>
+
   <script>
     let allTasks = [];
     let selectedId = null;
     let activeCategory = "All";
+    let probeAbortController = null;
+    let lastProbeResult = null;
 
     const searchSettings = {
       searchFileName: true,
@@ -457,8 +763,16 @@
       matchWholeString: false
     };
 
+    function showToast(msg, icon = "ℹ️") {
+      const toast = document.getElementById("toastBox");
+      document.getElementById("toastIcon").textContent = icon;
+      document.getElementById("toastMsg").textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2800);
+    }
+
     function formatBytes(bytes) {
-      if (bytes <= 0 || !bytes) return "0 B";
+      if (bytes <= 0 || !bytes) return "--";
       const k = 1024;
       const sizes = ["B", "KB", "MB", "GB", "TB"];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -475,6 +789,48 @@
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
       return `${m}m ${s}s`;
+    }
+
+    function formatDuration(sec) {
+      if (!sec) return "";
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function updateCategoryBadges() {
+      const counts = { All: allTasks.length, Video: 0, Music: 0, Compressed: 0, Documents: 0, Programs: 0 };
+      allTasks.forEach(t => {
+        if (counts[t.category] !== undefined) counts[t.category]++;
+      });
+      for (const [cat, cnt] of Object.entries(counts)) {
+        const el = document.getElementById(`badge${cat}`);
+        if (el) el.textContent = cnt;
+      }
+    }
+
+    function updateToolbarButtons() {
+      const selectedTask = allTasks.find(t => t.id === selectedId);
+      const btnResume = document.getElementById("btnResume");
+      const btnPause = document.getElementById("btnPause");
+      const btnOpenFile = document.getElementById("btnOpenFile");
+      const btnOpenFolder = document.getElementById("btnOpenFolder");
+      const btnDelete = document.getElementById("btnDelete");
+
+      if (!selectedTask) {
+        btnResume.disabled = true;
+        btnPause.disabled = true;
+        btnOpenFile.disabled = true;
+        btnOpenFolder.disabled = true;
+        btnDelete.disabled = true;
+        return;
+      }
+
+      btnDelete.disabled = false;
+      btnOpenFile.disabled = selectedTask.status !== "completed";
+      btnOpenFolder.disabled = false;
+      btnResume.disabled = selectedTask.status !== "paused" && selectedTask.status !== "error";
+      btnPause.disabled = selectedTask.status !== "downloading" && selectedTask.status !== "connecting";
     }
 
     function renderTasks() {
@@ -499,28 +855,66 @@
         tr.onclick = () => {
           selectedId = task.id;
           renderTasks();
+          updateToolbarButtons();
         };
 
+        tr.ondblclick = () => {
+          if (task.status === "completed") {
+            fetch(`/api/tasks/${task.id}/open`, { method: "POST" });
+            showToast(`Opening ${task.fileName}...`, "📂");
+          }
+        };
+
+        // Determine icon or thumbnail
+        let mediaIcon = "📄";
+        if (task.mediaType === "video_stream" || task.category === "Video") mediaIcon = "🎬";
+        else if (task.mediaType === "audio_stream" || task.category === "Music") mediaIcon = "🎵";
+        else if (task.category === "Compressed") mediaIcon = "📦";
+        else if (task.category === "Programs") mediaIcon = "⚙️";
+
+        const thumbHtml = task.thumbnailUrl
+          ? `<img class="task-thumb" src="${task.thumbnailUrl}" onerror="this.style.display='none'">`
+          : `<span style="font-size: 18px; margin-right: 4px;">${mediaIcon}</span>`;
+
+        let modeLabel = `${task.segmentCount}x Turbo`;
+        if (task.mediaType === "video_stream") modeLabel = "🎬 Video Stream";
+        else if (task.mediaType === "audio_stream") modeLabel = "🎵 Audio Stream";
+
         tr.innerHTML = `
-          <td><strong>${task.fileName}</strong></td>
+          <td>
+            <div class="task-title-cell" title="${task.fileName}">
+              ${thumbHtml}
+              <span class="task-name-text">${task.fileName}</span>
+            </div>
+          </td>
           <td>${formatBytes(task.fileSize)}</td>
           <td>
             <div class="progress-bar-container">
-              <div class="segment-bar" style="width: ${task.progressPercent}%;"></div>
+              <div class="segment-bar ${task.status}" style="width: ${task.progressPercent}%;"></div>
               <div class="progress-text">${task.progressPercent}%</div>
             </div>
           </td>
-          <td><span style="font-weight: 600; text-transform: capitalize;">${task.status}</span></td>
-          <td>${task.status === "downloading" ? formatSpeed(task.speed) : "--"}</td>
+          <td><span class="status-badge status-${task.status}">${task.status}</span></td>
+          <td style="color: ${task.speed > 0 ? '#2563eb' : 'inherit'}; font-weight: ${task.speed > 0 ? '600' : 'normal'};">${task.status === "downloading" ? formatSpeed(task.speed) : "--"}</td>
           <td>${task.status === "downloading" ? formatEta(task.eta) : "--"}</td>
-          <td style="text-align: center;">${task.segmentCount}x</td>
-          <td title="${task.url}">${task.url}</td>
+          <td><span style="font-size: 11px; color: #475569;">${modeLabel}</span></td>
+          <td title="${task.url}"><span style="font-size: 11px; color: #64748b;">${task.url}</span></td>
+          <td style="text-align: center;">
+            <button class="btn-row-action" title="Open Folder" onclick="event.stopPropagation(); fetch('/api/tasks/${task.id}/open-folder', {method:'POST'});">📁</button>
+            ${task.status === 'completed' ? `<button class="btn-row-action" title="Open File" onclick="event.stopPropagation(); fetch('/api/tasks/${task.id}/open', {method:'POST'});">▶️</button>` : ''}
+          </td>
         `;
 
         tbody.appendChild(tr);
       });
 
+      // Update summaries
+      const totalSpeed = allTasks.filter(t => t.status === "downloading").reduce((acc, t) => acc + (t.speed || 0), 0);
       document.getElementById("statusSummary").textContent = `Total: ${allTasks.length} downloads | Active: ${allTasks.filter(t => t.status === "downloading").length}`;
+      document.getElementById("speedSummary").textContent = totalSpeed > 0 ? `Speed: ${formatSpeed(totalSpeed)}` : "Speed: --";
+
+      updateCategoryBadges();
+      updateToolbarButtons();
     }
 
     // Connect Server-Sent Events (SSE)
@@ -544,14 +938,28 @@
 
     // Toolbar buttons
     document.getElementById("btnResume").onclick = () => {
-      if (selectedId) fetch(`/api/tasks/${selectedId}/resume`, { method: "POST" });
+      if (selectedId) {
+        fetch(`/api/tasks/${selectedId}/resume`, { method: "POST" });
+        showToast("Resuming download...", "▶️");
+      }
     };
     document.getElementById("btnPause").onclick = () => {
-      if (selectedId) fetch(`/api/tasks/${selectedId}/pause`, { method: "POST" });
+      if (selectedId) {
+        fetch(`/api/tasks/${selectedId}/pause`, { method: "POST" });
+        showToast("Paused download", "⏸️");
+      }
+    };
+    document.getElementById("btnOpenFile").onclick = () => {
+      if (selectedId) fetch(`/api/tasks/${selectedId}/open`, { method: "POST" });
+    };
+    document.getElementById("btnOpenFolder").onclick = () => {
+      if (selectedId) fetch(`/api/tasks/${selectedId}/open-folder`, { method: "POST" });
     };
     document.getElementById("btnDelete").onclick = () => {
-      if (selectedId && confirm("Delete this download?")) {
+      if (selectedId && confirm("Delete this download record and file?")) {
         fetch(`/api/tasks/${selectedId}?deleteFile=true`, { method: "DELETE" });
+        selectedId = null;
+        showToast("Download deleted", "🗑️");
       }
     };
 
@@ -582,29 +990,183 @@
     document.getElementById("btnFindNext").onclick = findNext;
     document.getElementById("btnSearchNext").onclick = findNext;
 
-    // Add Modal
+    // Add Modal & Probe Logic
     const addModal = document.getElementById("addModal");
-    document.getElementById("btnOpenAddModal").onclick = () => addModal.classList.remove("hidden");
+    const modalUrl = document.getElementById("modalUrl");
+    const probeLoading = document.getElementById("probeLoading");
+    const videoPreviewCard = document.getElementById("videoPreviewCard");
+    const streamFormatGroup = document.getElementById("streamFormatGroup");
+    const modalStreamFormat = document.getElementById("modalStreamFormat");
+    const directFileOptions = document.getElementById("directFileOptions");
+
+    function openAddModal(initialUrl = "") {
+      addModal.classList.remove("hidden");
+      videoPreviewCard.style.display = "none";
+      streamFormatGroup.style.display = "none";
+      directFileOptions.style.display = "block";
+      probeLoading.style.display = "none";
+      lastProbeResult = null;
+
+      if (initialUrl) {
+        modalUrl.value = initialUrl;
+        triggerProbe(initialUrl);
+      } else {
+        modalUrl.value = "";
+        modalUrl.focus();
+      }
+    }
+
+    document.getElementById("btnOpenAddModal").onclick = () => openAddModal();
     document.getElementById("closeAddModal").onclick = () => addModal.classList.add("hidden");
     document.getElementById("btnCancelAdd").onclick = () => addModal.classList.add("hidden");
 
+    // Paste & Add Quick Action
+    async function getClipboardText() {
+      try {
+        const res = await fetch("/api/clipboard");
+        const json = await res.json();
+        if (json.text) return json.text;
+      } catch {}
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          return await navigator.clipboard.readText();
+        }
+      } catch {}
+      return "";
+    }
+
+    document.getElementById("btnPasteDownload").onclick = async () => {
+      const clip = await getClipboardText();
+      if (clip && clip.startsWith("http")) {
+        openAddModal(clip.trim());
+      } else {
+        openAddModal();
+        showToast("Please enter download URL", "ℹ️");
+      }
+    };
+
+    document.getElementById("btnModalPaste").onclick = async () => {
+      const clip = await getClipboardText();
+      if (clip) {
+        modalUrl.value = clip.trim();
+        triggerProbe(modalUrl.value);
+      }
+    };
+
+    // Auto-probe when URL input changes
+    let probeDebounceTimer = null;
+    modalUrl.oninput = () => {
+      clearTimeout(probeDebounceTimer);
+      const url = modalUrl.value.trim();
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        probeDebounceTimer = setTimeout(() => triggerProbe(url), 400);
+      }
+    };
+
+    async function triggerProbe(url) {
+      if (probeAbortController) probeAbortController.abort();
+      probeAbortController = new AbortController();
+
+      probeLoading.style.display = "flex";
+      videoPreviewCard.style.display = "none";
+      streamFormatGroup.style.display = "none";
+
+      try {
+        const res = await fetch("/api/probe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+          signal: probeAbortController.signal,
+        });
+
+        if (!res.ok) throw new Error("Probe failed");
+        const data = await res.json();
+        lastProbeResult = data;
+        probeLoading.style.display = "none";
+
+        if (data.isStream) {
+          // Streaming detected (YouTube, TikTok, etc.)
+          videoPreviewCard.style.display = "flex";
+          streamFormatGroup.style.display = "flex";
+          directFileOptions.style.display = "none";
+
+          document.getElementById("previewTitle").textContent = data.title;
+          document.getElementById("previewDuration").textContent = formatDuration(data.duration);
+          if (data.thumbnailUrl) {
+            document.getElementById("previewThumb").src = data.thumbnailUrl;
+            document.getElementById("previewThumb").style.display = "block";
+          } else {
+            document.getElementById("previewThumb").style.display = "none";
+          }
+
+          let host = "Video Streaming";
+          try { host = new URL(url).hostname; } catch {}
+          document.getElementById("previewPlatformBadge").textContent = `🎬 ${host}`;
+
+          // Populate formats dropdown
+          modalStreamFormat.innerHTML = "";
+          data.formats.forEach(f => {
+            const opt = document.createElement("option");
+            opt.value = f.formatId;
+            opt.textContent = f.qualityLabel;
+            modalStreamFormat.appendChild(opt);
+          });
+
+          document.getElementById("modalFileName").value = data.fileName;
+          document.getElementById("modalCategory").value = data.category;
+        } else {
+          // Direct file
+          videoPreviewCard.style.display = "none";
+          streamFormatGroup.style.display = "none";
+          directFileOptions.style.display = "block";
+
+          if (data.fileName) document.getElementById("modalFileName").value = data.fileName;
+        }
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          probeLoading.style.display = "none";
+        }
+      }
+    }
+
     document.getElementById("btnSubmitDownload").onclick = async () => {
-      const url = document.getElementById("modalUrl").value.trim();
+      const url = modalUrl.value.trim();
       if (!url) return alert("Please enter a valid URL.");
 
-      const fileName = document.getElementById("modalFileName").value.trim();
-      const category = document.getElementById("modalCategory").value;
+      const isStream = lastProbeResult && lastProbeResult.isStream;
+      const formatId = isStream ? modalStreamFormat.value : undefined;
+      const qualityLabel = isStream ? modalStreamFormat.options[modalStreamFormat.selectedIndex].text : undefined;
+      const fileName = document.getElementById("modalFileName").value.trim() || undefined;
+      const category = isStream ? (formatId.includes("bestaudio") ? "Music" : "Video") : document.getElementById("modalCategory").value;
       const segmentCount = parseInt(document.getElementById("modalSegments").value, 10);
       const description = document.getElementById("modalDesc").value.trim();
+      const mediaType = isStream ? (formatId.includes("bestaudio") ? "audio_stream" : "video_stream") : "file";
+      const thumbnailUrl = isStream ? lastProbeResult.thumbnailUrl : undefined;
 
-      await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, fileName, category, segmentCount, description }),
-      });
-
+      showToast("Adding download task...", "⏳");
       addModal.classList.add("hidden");
-      document.getElementById("modalUrl").value = "";
+
+      try {
+        const res = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url,
+            fileName,
+            category,
+            segmentCount,
+            description,
+            formatId,
+            qualityLabel,
+            mediaType,
+            thumbnailUrl,
+          }),
+        });
+        const task = await res.json();
+        showToast(`Started: ${task.fileName}`, "🚀");
+      } catch (err) {
+        alert("Failed to add download: " + err);
+      }
     };
 
     // Global Hotkeys

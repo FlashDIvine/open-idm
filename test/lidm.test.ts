@@ -6,6 +6,7 @@ import fsp from "node:fs/promises";
 import { CategoryManager } from "../src/categories/categoryManager.ts";
 import { DownloadSearchEngine } from "../src/search/searchEngine.ts";
 import { QueueManager } from "../src/engine/queueManager.ts";
+import { StreamDownloader } from "../src/engine/streamDownloader.ts";
 import type { DownloadTask } from "../src/types.ts";
 
 test("CategoryManager: accurately categorizes file types", () => {
@@ -156,4 +157,18 @@ test("QueueManager: task lifecycle (add, pause, resume, delete)", async () => {
 
   // Clean up
   await fsp.rm(testDir, { recursive: true, force: true });
+});
+
+test("StreamDownloader: recognizes streaming service domains", () => {
+  assert.equal(StreamDownloader.isStreamUrl("https://www.youtube.com/watch?v=fnquM8GEkvA"), true);
+  assert.equal(StreamDownloader.isStreamUrl("https://youtu.be/fnquM8GEkvA"), true);
+  assert.equal(StreamDownloader.isStreamUrl("https://www.tiktok.com/@user/video/1234567890"), true);
+  assert.equal(StreamDownloader.isStreamUrl("https://www.instagram.com/reel/C8abcde/"), true);
+  assert.equal(StreamDownloader.isStreamUrl("https://twitter.com/user/status/123456"), true);
+  assert.equal(StreamDownloader.isStreamUrl("https://x.com/user/status/123456"), true);
+  assert.equal(StreamDownloader.isStreamUrl("https://fb.watch/xyz/"), true);
+
+  // Direct file URLs should not be marked as streaming domains
+  assert.equal(StreamDownloader.isStreamUrl("https://releases.ubuntu.com/24.04/ubuntu.iso"), false);
+  assert.equal(StreamDownloader.isStreamUrl("https://nodejs.org/dist/v20.0.0/node.tar.gz"), false);
 });

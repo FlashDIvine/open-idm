@@ -24,6 +24,25 @@ export interface SegmentInfo {
   speed: number;
 }
 
+export interface StreamFormatOption {
+  formatId: string;
+  qualityLabel: string;
+  ext: string;
+  filesize?: number;
+  isAudioOnly?: boolean;
+}
+
+export interface StreamProbeResult {
+  url: string;
+  title: string;
+  fileName: string;
+  duration: number;
+  thumbnailUrl?: string;
+  formats: StreamFormatOption[];
+  defaultFormat: string;
+  category: DownloadCategory;
+}
+
 export interface DownloadTask {
   id: string;
   url: string;
@@ -43,6 +62,11 @@ export interface DownloadTask {
   description?: string;
   referer?: string;
   siteName?: string;
+  mediaType?: "file" | "video_stream" | "audio_stream";
+  thumbnailUrl?: string;
+  duration?: number;
+  qualityLabel?: string;
+  formatId?: string;
   createdAt: number;
   updatedAt: number;
   error?: string;

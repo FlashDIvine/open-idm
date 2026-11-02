@@ -6,6 +6,7 @@ import { QueueManager, DEFAULT_CONFIG } from "./engine/queueManager.ts";
 import { WebServer } from "./server/webServer.ts";
 import { LidmMcpServer } from "./mcp/lidmMcpServer.ts";
 import { SegmentDownloader } from "./engine/segmentDownloader.ts";
+import { StreamDownloader } from "./engine/streamDownloader.ts";
 import { DownloadSearchEngine } from "./search/searchEngine.ts";
 import type { DownloadCategory } from "./types.ts";
 
@@ -307,15 +308,42 @@ export async function runCli(argv: string[]): Promise<void> {
       break;
     }
 
+    case "open": {
+      const id = args[1];
+      if (!id) {
+        console.error("Usage: lidm open <task-id>");
+        process.exit(1);
+      }
+      const ok = await queue.openFile(id);
+      console.log(ok ? `Opened file for ${id}` : `File not found or failed to open`);
+      break;
+    }
+
+    case "open-folder": {
+      const id = args[1];
+      if (!id) {
+        console.error("Usage: lidm open-folder <task-id>");
+        process.exit(1);
+      }
+      const ok = await queue.openFolder(id);
+      console.log(ok ? `Opened folder for ${id}` : `Folder not found or failed to open`);
+      break;
+    }
+
     case "probe": {
       const url = args[1];
       if (!url) {
         console.error("Usage: lidm probe <url>");
         process.exit(1);
       }
-      console.log(`Inspecting URL stream: ${url}...`);
-      const probe = await SegmentDownloader.probeUrl(url);
-      console.log(JSON.stringify(probe, null, 2));
+      console.log(`Inspecting URL: ${url}...`);
+      if (StreamDownloader.isStreamUrl(url)) {
+        const streamProbe = await StreamDownloader.probeStream(url);
+        console.log(JSON.stringify(streamProbe, null, 2));
+      } else {
+        const probe = await SegmentDownloader.probeUrl(url);
+        console.log(JSON.stringify(probe, null, 2));
+      }
       break;
     }
 

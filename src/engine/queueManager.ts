@@ -2,8 +2,10 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { SegmentDownloader } from "./segmentDownloader.ts";
+import { StreamDownloader } from "./streamDownloader.ts";
 import { CategoryManager } from "../categories/categoryManager.ts";
 import type { AppConfig, DownloadCategory, DownloadTask } from "../types.ts";
 
@@ -16,9 +18,22 @@ export const DEFAULT_CONFIG: AppConfig = {
   port: 3030,
 };
 
+export interface AddDownloadOptions {
+  fileName?: string;
+  category?: DownloadCategory;
+  saveDir?: string;
+  segmentCount?: number;
+  description?: string;
+  startImmediately?: boolean;
+  formatId?: string;
+  qualityLabel?: string;
+  mediaType?: "file" | "video_stream" | "audio_stream";
+  thumbnailUrl?: string;
+}
+
 export class QueueManager extends EventEmitter {
   private tasks: Map<string, DownloadTask> = new Map();
-  private activeDownloaders: Map<string, SegmentDownloader> = new Map();
+  private activeDownloaders: Map<string, SegmentDownloader | StreamDownloader> = new Map();
   private stateFilePath: string;
   private categoryManager: CategoryManager;
   private queueRunning: boolean = true;
@@ -49,31 +64,69 @@ export class QueueManager extends EventEmitter {
 
   public async addDownload(
     url: string,
-    options: {
-      fileName?: string;
-      category?: DownloadCategory;
-      saveDir?: string;
-      segmentCount?: number;
-      description?: string;
-      startImmediately?: boolean;
-    } = {}
+    options: AddDownloadOptions = {}
   ): Promise<DownloadTask> {
-    // Probe URL first
-    const probe = await SegmentDownloader.probeUrl(url);
+    const isStream = StreamDownloader.isStreamUrl(url) || options.mediaType === "video_stream" || options.mediaType === "audio_stream";
 
-    const fileName = options.fileName || probe.fileName || "download.bin";
-    const category = options.category || this.categoryManager.detectCategory(fileName);
-    const saveDir = options.saveDir || this.categoryManager.getCategoryDirectory(category);
-    const savePath = path.join(saveDir, fileName);
+    let fileName = options.fileName;
+    let category = options.category;
+    let saveDir = options.saveDir;
+    let fileSize = -1;
+    let supportsRange = true;
+    let etag: string | undefined;
+    let finalUrl = url;
+    let thumbnailUrl = options.thumbnailUrl;
+    let duration: number | undefined;
+    let qualityLabel = options.qualityLabel;
+    let formatId = options.formatId;
+    let mediaType: "file" | "video_stream" | "audio_stream" = options.mediaType || "file";
+
+    if (isStream) {
+      try {
+        const streamInfo = await StreamDownloader.probeStream(url);
+        fileName = fileName || streamInfo.fileName;
+        thumbnailUrl = thumbnailUrl || streamInfo.thumbnailUrl;
+        duration = streamInfo.duration;
+        formatId = formatId || streamInfo.defaultFormat;
+        const isAudio = formatId.includes("bestaudio") || options.category === "Music";
+        mediaType = isAudio ? "audio_stream" : "video_stream";
+        category = category || (isAudio ? "Music" : "Video");
+        qualityLabel = qualityLabel || (isAudio ? "MP3 Audio" : "HD Video");
+      } catch (err) {
+        // Fallback if probe fails
+        const urlObj = new URL(url);
+        fileName = fileName || `stream_${Date.now()}.mp4`;
+        category = category || "Video";
+        mediaType = "video_stream";
+      }
+    } else {
+      // Direct HTTP/HTTPS Range probe
+      const probe = await SegmentDownloader.probeUrl(url);
+      finalUrl = probe.finalUrl;
+      fileName = fileName || probe.fileName || "download.bin";
+      fileSize = probe.fileSize;
+      supportsRange = probe.supportsRange;
+      etag = probe.etag;
+      category = category || this.categoryManager.detectCategory(fileName);
+    }
+
+    category = category || "Video";
+    saveDir = saveDir || this.categoryManager.getCategoryDirectory(category);
+    const savePath = path.join(saveDir, fileName || "download.bin");
 
     const id = "task_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
 
+    let siteName = "unknown";
+    try {
+      siteName = new URL(finalUrl).hostname;
+    } catch {}
+
     const task: DownloadTask = {
       id,
-      url: probe.finalUrl,
-      fileName,
+      url: finalUrl,
+      fileName: fileName || "download.bin",
       savePath,
-      fileSize: probe.fileSize,
+      fileSize,
       downloadedBytes: 0,
       progressPercent: 0,
       status: "queued",
@@ -82,10 +135,15 @@ export class QueueManager extends EventEmitter {
       eta: 0,
       segmentCount: options.segmentCount || this.config.defaultSegments,
       segments: [],
-      supportsRange: probe.supportsRange,
-      etag: probe.etag,
+      supportsRange,
+      etag,
       description: options.description || "",
-      siteName: new URL(probe.finalUrl).hostname,
+      siteName,
+      mediaType,
+      thumbnailUrl,
+      duration,
+      qualityLabel,
+      formatId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -163,6 +221,44 @@ export class QueueManager extends EventEmitter {
     }
   }
 
+  public async openFile(id: string): Promise<boolean> {
+    const task = this.tasks.get(id);
+    if (!task || !fs.existsSync(task.savePath)) return false;
+
+    try {
+      if (process.platform === "win32") {
+        spawn("cmd.exe", ["/c", "start", "", task.savePath], { detached: true, stdio: "ignore" }).unref();
+      } else if (process.platform === "darwin") {
+        spawn("open", [task.savePath], { detached: true, stdio: "ignore" }).unref();
+      } else {
+        spawn("xdg-open", [task.savePath], { detached: true, stdio: "ignore" }).unref();
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  public async openFolder(id: string): Promise<boolean> {
+    const task = this.tasks.get(id);
+    if (!task) return false;
+    const folder = path.dirname(task.savePath);
+    if (!fs.existsSync(folder)) return false;
+
+    try {
+      if (process.platform === "win32") {
+        spawn("explorer.exe", [folder], { detached: true, stdio: "ignore" }).unref();
+      } else if (process.platform === "darwin") {
+        spawn("open", [folder], { detached: true, stdio: "ignore" }).unref();
+      } else {
+        spawn("xdg-open", [folder], { detached: true, stdio: "ignore" }).unref();
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async checkQueue(): Promise<void> {
     if (!this.queueRunning) return;
 
@@ -175,7 +271,11 @@ export class QueueManager extends EventEmitter {
 
     for (let i = 0; i < Math.min(slots, queued.length); i++) {
       const task = queued[i];
-      const downloader = new SegmentDownloader(task);
+      const isStream = task.mediaType === "video_stream" || task.mediaType === "audio_stream";
+      const downloader: SegmentDownloader | StreamDownloader = isStream
+        ? new StreamDownloader(task)
+        : new SegmentDownloader(task);
+
       this.activeDownloaders.set(task.id, downloader);
 
       downloader.on("progress", () => {

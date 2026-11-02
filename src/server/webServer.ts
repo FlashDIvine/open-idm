@@ -2,10 +2,12 @@ import http from "node:http";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import { exec } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { QueueManager } from "../engine/queueManager.ts";
 import { DownloadSearchEngine } from "../search/searchEngine.ts";
 import { SegmentDownloader } from "../engine/segmentDownloader.ts";
+import { StreamDownloader } from "../engine/streamDownloader.ts";
 import type { DownloadCategory, SearchSettings } from "../types.ts";
 
 function getPublicDir(): string {
@@ -108,6 +110,10 @@ export class WebServer {
             segmentCount: body.segmentCount ? parseInt(body.segmentCount, 10) : undefined,
             description: body.description,
             startImmediately: body.startImmediately ?? true,
+            formatId: body.formatId,
+            qualityLabel: body.qualityLabel,
+            mediaType: body.mediaType,
+            thumbnailUrl: body.thumbnailUrl,
           });
           res.writeHead(201, { "Content-Type": "application/json" });
           res.end(JSON.stringify(task));
@@ -121,13 +127,55 @@ export class WebServer {
       if (pathname === "/api/probe" && req.method === "POST") {
         const body = await this.readJsonBody(req);
         try {
-          const probe = await SegmentDownloader.probeUrl(body.url);
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify(probe));
+          if (StreamDownloader.isStreamUrl(body.url) || body.isStream) {
+            const probe = await StreamDownloader.probeStream(body.url);
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ isStream: true, ...probe }));
+          } else {
+            const probe = await SegmentDownloader.probeUrl(body.url);
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ isStream: false, ...probe }));
+          }
         } catch (err: any) {
           res.writeHead(400, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: err.message || String(err) }));
         }
+        return;
+      }
+
+      if (pathname === "/api/clipboard" && req.method === "GET") {
+        let text = "";
+        try {
+          if (process.platform === "win32") {
+            const out = await new Promise<string>((resolve) => {
+              exec('powershell.exe -command "Get-Clipboard"', (err, stdout) => resolve(stdout || ""));
+            });
+            text = out.trim();
+          } else {
+            const out = await new Promise<string>((resolve) => {
+              exec("wl-paste 2>/dev/null || xclip -selection clipboard -o 2>/dev/null", (err, stdout) => resolve(stdout || ""));
+            });
+            text = out.trim();
+          }
+        } catch {}
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ text }));
+        return;
+      }
+
+      if (pathname.startsWith("/api/tasks/") && pathname.endsWith("/open") && req.method === "POST") {
+        const id = pathname.split("/")[3];
+        const ok = await this.queue.openFile(id);
+        res.writeHead(ok ? 200 : 404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: ok }));
+        return;
+      }
+
+      if (pathname.startsWith("/api/tasks/") && pathname.endsWith("/open-folder") && req.method === "POST") {
+        const id = pathname.split("/")[3];
+        const ok = await this.queue.openFolder(id);
+        res.writeHead(ok ? 200 : 404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: ok }));
         return;
       }
 
