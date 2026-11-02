@@ -219,7 +219,7 @@ export async function runCli(argv: string[]): Promise<void> {
     case "add": {
       const url = args[1];
       if (!url) {
-        console.error("Usage: lidm add <url> [--segments <n>] [--category <cat>]");
+        console.error("Usage: lidm add <url> [--segments <n>] [--category <cat>] [--audio] [--format <id>]");
         process.exit(1);
       }
 
@@ -227,12 +227,21 @@ export async function runCli(argv: string[]): Promise<void> {
       const segments = segIdx !== -1 ? parseInt(args[segIdx + 1], 10) : 8;
 
       const catIdx = args.indexOf("--category");
-      const category = catIdx !== -1 ? (args[catIdx + 1] as DownloadCategory) : undefined;
+      let category = catIdx !== -1 ? (args[catIdx + 1] as DownloadCategory) : undefined;
+
+      const isAudio = args.includes("--audio") || args.includes("-a");
+      const fmtIdx = args.indexOf("--format");
+      const formatId = fmtIdx !== -1 ? args[fmtIdx + 1] : (isAudio ? "bestaudio/best" : undefined);
+      if (isAudio && !category) {
+        category = "Music";
+      }
 
       console.log(`Probing URL: ${url}...`);
       const task = await queue.addDownload(url, {
         segmentCount: segments,
         category,
+        formatId,
+        mediaType: isAudio ? "audio_stream" : undefined,
         startImmediately: true,
       });
 

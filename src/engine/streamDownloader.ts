@@ -154,7 +154,7 @@ export class StreamDownloader extends EventEmitter {
             }
           }
 
-          if (heights.has(1080) || heights.has(1440) || heights.has(2160)) {
+          if (heights.has(1080) || heights.has(1440) || heights.has(2160) || heights.has(1920)) {
             formats.push({
               formatId: "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
               qualityLabel: "🎬 1080p Full HD (MP4)",
@@ -162,7 +162,7 @@ export class StreamDownloader extends EventEmitter {
             });
           }
 
-          if (heights.has(720)) {
+          if (heights.has(720) || heights.has(1280)) {
             formats.push({
               formatId: "bestvideo[height<=720]+bestaudio/best[height<=720]",
               qualityLabel: "🎥 720p HD (MP4)",
@@ -170,7 +170,7 @@ export class StreamDownloader extends EventEmitter {
             });
           }
 
-          if (heights.has(480) || heights.has(360)) {
+          if (heights.has(480) || heights.has(360) || heights.has(854) || heights.has(640)) {
             formats.push({
               formatId: "bestvideo[height<=480]+bestaudio/best[height<=480]",
               qualityLabel: "📱 480p / 360p Standard (MP4)",
@@ -253,7 +253,11 @@ export class StreamDownloader extends EventEmitter {
 
     const ytdlp = StreamDownloader.findYtDlpBinary();
     const nodeBin = StreamDownloader.findNodeBinary();
-    const isAudioOnly = this.task.mediaType === "audio_stream" || this.task.formatId?.includes("bestaudio");
+    const isAudioOnly = this.task.mediaType === "audio_stream" || (
+      this.task.mediaType !== "video_stream" &&
+      !this.task.formatId?.includes("bestvideo") &&
+      Boolean(this.task.formatId?.startsWith("bestaudio") || this.task.formatId?.startsWith("ba"))
+    );
     if (isAudioOnly) {
       if (!this.task.savePath.endsWith(".mp3")) {
         this.task.savePath = this.task.savePath.replace(/\.[a-zA-Z0-9]+$/, "") + ".mp3";
@@ -380,14 +384,19 @@ export class StreamDownloader extends EventEmitter {
           // Sometimes ffmpeg outputs .mp4, .mp3, or .mkv if extension differed
           const dir = path.dirname(this.task.savePath);
           const baseNoExt = path.basename(this.task.savePath, path.extname(this.task.savePath));
-          const candidates = [
-            this.task.savePath + ".mp3",
-            this.task.savePath + ".mp4",
-            path.join(dir, `${baseNoExt}.mp4`),
-            path.join(dir, `${baseNoExt}.mp3`),
-            path.join(dir, `${baseNoExt}.mkv`),
-            path.join(dir, `${baseNoExt}.webm`),
-          ];
+          const candidates = isAudioOnly
+            ? [
+                this.task.savePath + ".mp3",
+                path.join(dir, `${baseNoExt}.mp3`),
+                this.task.savePath + ".m4a",
+                path.join(dir, `${baseNoExt}.m4a`),
+              ]
+            : [
+                this.task.savePath + ".mp4",
+                path.join(dir, `${baseNoExt}.mp4`),
+                path.join(dir, `${baseNoExt}.mkv`),
+                path.join(dir, `${baseNoExt}.webm`),
+              ];
           for (const c of candidates) {
             if (fs.existsSync(c)) {
               resolvedPath = c;

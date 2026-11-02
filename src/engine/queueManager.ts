@@ -88,16 +88,20 @@ export class QueueManager extends EventEmitter {
         thumbnailUrl = thumbnailUrl || streamInfo.thumbnailUrl;
         duration = streamInfo.duration;
         formatId = formatId || streamInfo.defaultFormat;
-        const isAudio = formatId.includes("bestaudio") || options.category === "Music";
+        const isAudio = options.mediaType === "audio_stream" || (
+          options.mediaType !== "video_stream" &&
+          !formatId.includes("bestvideo") &&
+          (formatId.startsWith("bestaudio") || options.category === "Music")
+        );
         mediaType = isAudio ? "audio_stream" : "video_stream";
         category = category || (isAudio ? "Music" : "Video");
         qualityLabel = qualityLabel || (isAudio ? "MP3 Audio" : "HD Video");
       } catch (err) {
         // Fallback if probe fails
         const urlObj = new URL(url);
-        fileName = fileName || `stream_${Date.now()}.mp4`;
-        category = category || "Video";
-        mediaType = "video_stream";
+        fileName = fileName || `stream_${Date.now()}.${options.mediaType === "audio_stream" ? "mp3" : "mp4"}`;
+        category = category || (options.mediaType === "audio_stream" ? "Music" : "Video");
+        mediaType = options.mediaType || "video_stream";
       }
     } else {
       // Direct HTTP/HTTPS Range probe

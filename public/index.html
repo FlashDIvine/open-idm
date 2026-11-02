@@ -1138,8 +1138,22 @@
             const opt = document.createElement("option");
             opt.value = f.formatId;
             opt.textContent = f.qualityLabel;
+            opt.dataset.isAudio = f.isAudioOnly ? "1" : "0";
+            opt.dataset.ext = f.ext || (f.isAudioOnly ? "mp3" : "mp4");
             modalStreamFormat.appendChild(opt);
           });
+
+          // Sync filename extension & category when switching format option
+          modalStreamFormat.onchange = () => {
+            const sel = modalStreamFormat.options[modalStreamFormat.selectedIndex];
+            const isAud = sel?.dataset?.isAudio === "1";
+            const ext = sel?.dataset?.ext || (isAud ? "mp3" : "mp4");
+            const fileNameInput = document.getElementById("modalFileName");
+            if (fileNameInput.value) {
+              fileNameInput.value = fileNameInput.value.replace(/\.[a-zA-Z0-9]+$/, "") + "." + ext;
+            }
+            document.getElementById("modalCategory").value = isAud ? "Music" : "Video";
+          };
 
           document.getElementById("modalFileName").value = data.fileName;
           document.getElementById("modalCategory").value = data.category;
@@ -1163,13 +1177,19 @@
       if (!url) return alert("Please enter a valid URL.");
 
       const isStream = lastProbeResult && lastProbeResult.isStream;
+      const selectedOption = isStream ? modalStreamFormat.options[modalStreamFormat.selectedIndex] : null;
+      const isAudioOnly = isStream && (
+        selectedOption?.dataset?.isAudio === "1" ||
+        modalStreamFormat.value === "bestaudio/best" ||
+        (!modalStreamFormat.value.includes("bestvideo") && modalStreamFormat.value.startsWith("bestaudio"))
+      );
       const formatId = isStream ? modalStreamFormat.value : undefined;
-      const qualityLabel = isStream ? modalStreamFormat.options[modalStreamFormat.selectedIndex].text : undefined;
+      const qualityLabel = isStream && selectedOption ? selectedOption.text : undefined;
       const fileName = document.getElementById("modalFileName").value.trim() || undefined;
-      const category = isStream ? (formatId.includes("bestaudio") ? "Music" : "Video") : document.getElementById("modalCategory").value;
+      const category = isStream ? (isAudioOnly ? "Music" : "Video") : document.getElementById("modalCategory").value;
       const segmentCount = parseInt(document.getElementById("modalSegments").value, 10);
       const description = document.getElementById("modalDesc").value.trim();
-      const mediaType = isStream ? (formatId.includes("bestaudio") ? "audio_stream" : "video_stream") : "file";
+      const mediaType = isStream ? (isAudioOnly ? "audio_stream" : "video_stream") : "file";
       const thumbnailUrl = isStream ? lastProbeResult.thumbnailUrl : undefined;
 
       showToast("Adding download task...", "⏳");

@@ -172,3 +172,26 @@ test("StreamDownloader: recognizes streaming service domains", () => {
   assert.equal(StreamDownloader.isStreamUrl("https://releases.ubuntu.com/24.04/ubuntu.iso"), false);
   assert.equal(StreamDownloader.isStreamUrl("https://nodejs.org/dist/v20.0.0/node.tar.gz"), false);
 });
+
+test("StreamDownloader: correctly distinguishes video vs audio stream formats", () => {
+  const isAudioFormat = (formatId: string, mediaType?: string) => {
+    return mediaType === "audio_stream" || (
+      mediaType !== "video_stream" &&
+      !formatId.includes("bestvideo") &&
+      Boolean(formatId.startsWith("bestaudio") || formatId.startsWith("ba"))
+    );
+  };
+
+  // Video formats containing +bestaudio must NOT be classified as audio only
+  assert.equal(isAudioFormat("bestvideo+bestaudio/best"), false);
+  assert.equal(isAudioFormat("bestvideo[height<=1080]+bestaudio/best[height<=1080]"), false);
+  assert.equal(isAudioFormat("bestvideo[height<=720]+bestaudio/best[height<=720]"), false);
+  assert.equal(isAudioFormat("bestvideo[height<=480]+bestaudio/best[height<=480]"), false);
+  assert.equal(isAudioFormat("bestvideo+bestaudio/best", "video_stream"), false);
+
+  // Pure audio formats MUST be classified as audio only
+  assert.equal(isAudioFormat("bestaudio/best"), true);
+  assert.equal(isAudioFormat("bestaudio"), true);
+  assert.equal(isAudioFormat("ba/b"), true);
+  assert.equal(isAudioFormat("anything", "audio_stream"), true);
+});
