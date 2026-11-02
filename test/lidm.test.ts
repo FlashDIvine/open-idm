@@ -175,23 +175,24 @@ test("StreamDownloader: recognizes streaming service domains", () => {
 
 test("StreamDownloader: correctly distinguishes video vs audio stream formats", () => {
   const isAudioFormat = (formatId: string, mediaType?: string) => {
-    return mediaType === "audio_stream" || (
-      mediaType !== "video_stream" &&
-      !formatId.includes("bestvideo") &&
-      Boolean(formatId.startsWith("bestaudio") || formatId.startsWith("ba"))
+    const isVideo = Boolean(formatId && (formatId.includes("bestvideo") || formatId.includes("bv")));
+    return !isVideo && (
+      mediaType === "audio_stream" ||
+      Boolean(formatId && (formatId.startsWith("bestaudio") || formatId.startsWith("ba")))
     );
   };
 
-  // Video formats containing +bestaudio must NOT be classified as audio only
+  // Video formats containing +bestaudio must NEVER be classified as audio only, even if mediaType was wrongly passed
   assert.equal(isAudioFormat("bestvideo+bestaudio/best"), false);
   assert.equal(isAudioFormat("bestvideo[height<=1080]+bestaudio/best[height<=1080]"), false);
   assert.equal(isAudioFormat("bestvideo[height<=720]+bestaudio/best[height<=720]"), false);
   assert.equal(isAudioFormat("bestvideo[height<=480]+bestaudio/best[height<=480]"), false);
   assert.equal(isAudioFormat("bestvideo+bestaudio/best", "video_stream"), false);
+  assert.equal(isAudioFormat("bestvideo+bestaudio/best", "audio_stream"), false);
 
   // Pure audio formats MUST be classified as audio only
   assert.equal(isAudioFormat("bestaudio/best"), true);
   assert.equal(isAudioFormat("bestaudio"), true);
   assert.equal(isAudioFormat("ba/b"), true);
-  assert.equal(isAudioFormat("anything", "audio_stream"), true);
+  assert.equal(isAudioFormat("audio_only", "audio_stream"), true);
 });

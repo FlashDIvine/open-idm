@@ -42,9 +42,9 @@ class LidmWindow(Gtk.Window):
         # WebKit Settings
         settings = WebKit2.Settings()
         settings.set_enable_javascript(True)
-        settings.set_enable_developer_extras(False)
+        settings.set_enable_developer_extras(True)
         settings.set_enable_webgl(True)
-        settings.set_enable_page_cache(True)
+        settings.set_enable_page_cache(False)
         settings.set_allow_file_access_from_file_urls(True)
         settings.set_user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) LIDM/1.0 Safari/537.36")
 
@@ -56,12 +56,26 @@ class LidmWindow(Gtk.Window):
         self.webview.set_settings(settings)
         self.webview.connect("decide-policy", self.on_decide_policy)
 
+        # Key bindings (F5, Ctrl+R to reload)
+        self.connect("key-press-event", self.on_key_press)
+
         # Container
         self.add(self.webview)
         self.webview.load_uri(url)
 
         # Clean shutdown on close
         self.connect("destroy", Gtk.main_quit)
+
+    def on_key_press(self, widget, event):
+        from gi.repository import Gdk
+        # F5 or Ctrl+R / Ctrl+Shift+R to reload
+        if event.keyval == Gdk.KEY_F5:
+            self.webview.reload_bypass_cache()
+            return True
+        if (event.state & Gdk.ModifierType.CONTROL_MASK) and event.keyval in (Gdk.KEY_r, Gdk.KEY_R):
+            self.webview.reload_bypass_cache()
+            return True
+        return False
 
     def on_decide_policy(self, webview, decision, decision_type):
         """Keep LIDM operations internal; route external web links to system browser."""

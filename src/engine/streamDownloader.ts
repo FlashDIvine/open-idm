@@ -253,10 +253,10 @@ export class StreamDownloader extends EventEmitter {
 
     const ytdlp = StreamDownloader.findYtDlpBinary();
     const nodeBin = StreamDownloader.findNodeBinary();
-    const isAudioOnly = this.task.mediaType === "audio_stream" || (
-      this.task.mediaType !== "video_stream" &&
-      !this.task.formatId?.includes("bestvideo") &&
-      Boolean(this.task.formatId?.startsWith("bestaudio") || this.task.formatId?.startsWith("ba"))
+    const isVideo = Boolean(this.task.formatId && (this.task.formatId.includes("bestvideo") || this.task.formatId.includes("bv")));
+    const isAudioOnly = !isVideo && (
+      this.task.mediaType === "audio_stream" ||
+      Boolean(this.task.formatId && (this.task.formatId.startsWith("bestaudio") || this.task.formatId.startsWith("ba")))
     );
     if (isAudioOnly) {
       if (!this.task.savePath.endsWith(".mp3")) {

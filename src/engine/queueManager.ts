@@ -88,10 +88,11 @@ export class QueueManager extends EventEmitter {
         thumbnailUrl = thumbnailUrl || streamInfo.thumbnailUrl;
         duration = streamInfo.duration;
         formatId = formatId || streamInfo.defaultFormat;
-        const isAudio = options.mediaType === "audio_stream" || (
-          options.mediaType !== "video_stream" &&
-          !formatId.includes("bestvideo") &&
-          (formatId.startsWith("bestaudio") || options.category === "Music")
+        const isVideo = Boolean(formatId && (formatId.includes("bestvideo") || formatId.includes("bv")));
+        const isAudio = !isVideo && (
+          options.mediaType === "audio_stream" ||
+          Boolean(formatId && (formatId.startsWith("bestaudio") || formatId.startsWith("ba"))) ||
+          options.category === "Music"
         );
         mediaType = isAudio ? "audio_stream" : "video_stream";
         category = category || (isAudio ? "Music" : "Video");
