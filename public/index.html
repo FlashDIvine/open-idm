@@ -236,8 +236,31 @@
       vertical-align: middle;
     }
     tr:hover { background: #f8fafc; cursor: pointer; }
-    tr.selected { background: #e0f2fe !important; }
-    tr.selected td { color: #0f172a; }
+    tr.selected {
+      background: #dbeafe !important;
+      border-left: 3px solid #2563eb;
+    }
+    tr.selected td {
+      color: #0f172a;
+      font-weight: 500;
+    }
+    .task-checkbox, #selectAllCheckbox {
+      cursor: pointer;
+      width: 15px;
+      height: 15px;
+      accent-color: #2563eb;
+      vertical-align: middle;
+    }
+    .selection-badge {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 4px;
+    }
 
     /* Task row thumbnail / icon */
     .task-title-cell {
@@ -535,13 +558,13 @@
         <span>Paste URL</span>
       </button>
       <div style="width: 1px; height: 28px; background: #cbd5e1; margin: 0 2px;"></div>
-      <button class="tool-btn" id="btnResume" title="Resume selected download" disabled>
+      <button class="tool-btn" id="btnResume" title="Resume selected download(s)" disabled>
         <span class="tool-icon">▶️</span>
-        <span>Resume</span>
+        <span id="btnResumeText">Resume</span>
       </button>
-      <button class="tool-btn" id="btnPause" title="Pause selected download" disabled>
+      <button class="tool-btn" id="btnPause" title="Pause selected download(s)" disabled>
         <span class="tool-icon">⏸️</span>
-        <span>Pause</span>
+        <span id="btnPauseText">Pause</span>
       </button>
       <button class="tool-btn" id="btnOpenFile" title="Open downloaded file" disabled>
         <span class="tool-icon">📂</span>
@@ -551,9 +574,14 @@
         <span class="tool-icon">📁</span>
         <span>Folder</span>
       </button>
-      <button class="tool-btn" id="btnDelete" title="Delete selected download" disabled>
+      <button class="tool-btn" id="btnDelete" title="Delete selected download(s)" disabled>
         <span class="tool-icon">🗑️</span>
-        <span>Delete</span>
+        <span id="btnDeleteText">Delete</span>
+      </button>
+      <div style="width: 1px; height: 28px; background: #cbd5e1; margin: 0 2px;"></div>
+      <button class="tool-btn" id="btnSelectAll" title="Select All / Blok Semua (Ctrl+A)">
+        <span class="tool-icon">☑️</span>
+        <span>Select All</span>
       </button>
       <div style="width: 1px; height: 28px; background: #cbd5e1; margin: 0 2px;"></div>
       <button class="tool-btn" id="btnToggleSearch" title="Toggle Search Bar (Ctrl+F)">
@@ -611,6 +639,9 @@
         <table id="taskTable">
           <thead>
             <tr>
+              <th style="width: 36px; text-align: center;">
+                <input type="checkbox" id="selectAllCheckbox" title="Select All / Blok Semua (Ctrl+A)">
+              </th>
               <th style="width: 280px;">File / Media Name</th>
               <th style="width: 85px;">Size</th>
               <th style="width: 150px;">Progress</th>
@@ -630,8 +661,9 @@
     <!-- Status Bar -->
     <div class="statusbar">
       <span id="statusSummary">0 downloads</span>
+      <span id="selectionSummary" style="display: none; color: #1d4ed8; font-weight: 600; background: #dbeafe; padding: 2px 8px; border-radius: 4px;">Selected: 0</span>
       <span id="speedSummary">Speed: --</span>
-      <span id="searchStatus">Ctrl+F: Find | F3: Jump Next | Double-click: Open File</span>
+      <span id="searchStatus">Ctrl+A: Blok Semua | Shift+Click: Multi-Select | Ctrl+Click: Toggle | Delete: Hapus</span>
     </div>
   </div>
 
@@ -750,7 +782,8 @@
 
   <script>
     let allTasks = [];
-    let selectedId = null;
+    let selectedIds = new Set();
+    let lastSelectedId = null;
     let activeCategory = "All";
     let probeAbortController = null;
     let lastProbeResult = null;
@@ -818,36 +851,9 @@
       }
     }
 
-    function updateToolbarButtons() {
-      const selectedTask = allTasks.find(t => t.id === selectedId);
-      const btnResume = document.getElementById("btnResume");
-      const btnPause = document.getElementById("btnPause");
-      const btnOpenFile = document.getElementById("btnOpenFile");
-      const btnOpenFolder = document.getElementById("btnOpenFolder");
-      const btnDelete = document.getElementById("btnDelete");
-
-      if (!selectedTask) {
-        btnResume.disabled = true;
-        btnPause.disabled = true;
-        btnOpenFile.disabled = true;
-        btnOpenFolder.disabled = true;
-        btnDelete.disabled = true;
-        return;
-      }
-
-      btnDelete.disabled = false;
-      btnOpenFile.disabled = selectedTask.status !== "completed";
-      btnOpenFolder.disabled = false;
-      btnResume.disabled = selectedTask.status !== "paused" && selectedTask.status !== "error";
-      btnPause.disabled = selectedTask.status !== "downloading" && selectedTask.status !== "connecting";
-    }
-
-    function renderTasks() {
+    function getFilteredTasks() {
       const q = document.getElementById("searchInput").value.trim().toLowerCase();
-      const tbody = document.getElementById("tableBody");
-      tbody.innerHTML = "";
-
-      const filtered = allTasks.filter(t => {
+      return allTasks.filter(t => {
         if (activeCategory !== "All" && t.category !== activeCategory) return false;
         if (!q) return true;
 
@@ -856,15 +862,135 @@
         if (searchSettings.searchSiteOrUrlOrReferer && (t.url.toLowerCase().includes(q) || t.siteName?.toLowerCase().includes(q))) return true;
         return false;
       });
+    }
 
-      filtered.forEach(task => {
+    function updateToolbarButtons() {
+      const selectedTasks = allTasks.filter(t => selectedIds.has(t.id));
+      const count = selectedTasks.length;
+
+      const btnResume = document.getElementById("btnResume");
+      const btnPause = document.getElementById("btnPause");
+      const btnOpenFile = document.getElementById("btnOpenFile");
+      const btnOpenFolder = document.getElementById("btnOpenFolder");
+      const btnDelete = document.getElementById("btnDelete");
+      const selectionSummary = document.getElementById("selectionSummary");
+
+      const btnDeleteText = document.getElementById("btnDeleteText");
+      const btnResumeText = document.getElementById("btnResumeText");
+      const btnPauseText = document.getElementById("btnPauseText");
+
+      if (count === 0) {
+        btnResume.disabled = true;
+        btnPause.disabled = true;
+        btnOpenFile.disabled = true;
+        btnOpenFolder.disabled = true;
+        btnDelete.disabled = true;
+        if (selectionSummary) selectionSummary.style.display = "none";
+        if (btnDeleteText) btnDeleteText.textContent = "Delete";
+        if (btnResumeText) btnResumeText.textContent = "Resume";
+        if (btnPauseText) btnPauseText.textContent = "Pause";
+        return;
+      }
+
+      const resumableCount = selectedTasks.filter(t => t.status === "paused" || t.status === "error" || t.status === "queued").length;
+      const pausableCount = selectedTasks.filter(t => t.status === "downloading" || t.status === "connecting").length;
+
+      if (btnDeleteText) btnDeleteText.textContent = count > 1 ? `Delete (${count})` : "Delete";
+      if (btnResumeText) btnResumeText.textContent = resumableCount > 1 ? `Resume (${resumableCount})` : "Resume";
+      if (btnPauseText) btnPauseText.textContent = pausableCount > 1 ? `Pause (${pausableCount})` : "Pause";
+
+      btnDelete.disabled = false;
+      btnResume.disabled = resumableCount === 0;
+      btnPause.disabled = pausableCount === 0;
+      btnOpenFile.disabled = count !== 1 || selectedTasks[0].status !== "completed";
+      btnOpenFolder.disabled = count === 0;
+
+      if (selectionSummary) {
+        selectionSummary.style.display = "inline";
+        selectionSummary.textContent = `Diblok / Dipilih: ${count} dari ${allTasks.length} file`;
+      }
+    }
+
+    function handleRowClick(task, index, event, filtered) {
+      if (event.ctrlKey || event.metaKey) {
+        // Ctrl+Click: Toggle individual row
+        if (selectedIds.has(task.id)) {
+          selectedIds.delete(task.id);
+        } else {
+          selectedIds.add(task.id);
+          lastSelectedId = task.id;
+        }
+      } else if (event.shiftKey && lastSelectedId) {
+        // Shift+Click: Range select (blok rentang baris)
+        const lastIdx = filtered.findIndex(t => t.id === lastSelectedId);
+        if (lastIdx !== -1) {
+          const start = Math.min(lastIdx, index);
+          const end = Math.max(lastIdx, index);
+          for (let i = start; i <= end; i++) {
+            selectedIds.add(filtered[i].id);
+          }
+        } else {
+          selectedIds.add(task.id);
+          lastSelectedId = task.id;
+        }
+      } else {
+        // Normal click: Single select
+        selectedIds.clear();
+        selectedIds.add(task.id);
+        lastSelectedId = task.id;
+      }
+      renderTasks();
+      updateToolbarButtons();
+    }
+
+    function toggleSelectTask(taskId, event) {
+      if (selectedIds.has(taskId)) {
+        selectedIds.delete(taskId);
+      } else {
+        selectedIds.add(taskId);
+        lastSelectedId = taskId;
+      }
+      renderTasks();
+      updateToolbarButtons();
+    }
+
+    function renderTasks() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      const filtered = getFilteredTasks();
+
+      // Clean up deleted tasks from selection
+      for (const id of Array.from(selectedIds)) {
+        if (!allTasks.some(t => t.id === id)) {
+          selectedIds.delete(id);
+        }
+      }
+
+      // Update header select-all checkbox
+      const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+      if (selectAllCheckbox) {
+        const visibleCount = filtered.length;
+        const selectedVisibleCount = filtered.filter(t => selectedIds.has(t.id)).length;
+        if (visibleCount === 0 || selectedVisibleCount === 0) {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = false;
+        } else if (selectedVisibleCount === visibleCount) {
+          selectAllCheckbox.checked = true;
+          selectAllCheckbox.indeterminate = false;
+        } else {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = true;
+        }
+      }
+
+      filtered.forEach((task, index) => {
         const tr = document.createElement("tr");
-        if (task.id === selectedId) tr.classList.add("selected");
+        const isSelected = selectedIds.has(task.id);
+        if (isSelected) tr.classList.add("selected");
 
-        tr.onclick = () => {
-          selectedId = task.id;
-          renderTasks();
-          updateToolbarButtons();
+        tr.onclick = (e) => {
+          handleRowClick(task, index, e, filtered);
         };
 
         tr.ondblclick = () => {
@@ -910,6 +1036,9 @@
         }
 
         tr.innerHTML = `
+          <td style="text-align: center; width: 36px;" onclick="event.stopPropagation();">
+            <input type="checkbox" class="task-checkbox" ${isSelected ? "checked" : ""} onchange="toggleSelectTask('${task.id}', event)">
+          </td>
           <td>
             <div class="task-title-cell" title="${task.fileName}">
               ${thumbHtml}
@@ -965,32 +1094,124 @@
       };
     });
 
-    // Toolbar buttons
-    document.getElementById("btnResume").onclick = () => {
-      if (selectedId) {
-        fetch(`/api/tasks/${selectedId}/resume`, { method: "POST" });
-        showToast("Resuming download...", "▶️");
-      }
+    // Checkbox select all
+    const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+    if (selectAllCheckbox) {
+      selectAllCheckbox.onchange = (e) => {
+        const filtered = getFilteredTasks();
+        if (e.target.checked) {
+          filtered.forEach(t => selectedIds.add(t.id));
+          if (filtered.length > 0) lastSelectedId = filtered[0].id;
+        } else {
+          filtered.forEach(t => selectedIds.delete(t.id));
+        }
+        renderTasks();
+        updateToolbarButtons();
+      };
+    }
+
+    // Toolbar button Select All
+    const btnSelectAll = document.getElementById("btnSelectAll");
+    if (btnSelectAll) {
+      btnSelectAll.onclick = () => {
+        const filtered = getFilteredTasks();
+        const allSelected = filtered.length > 0 && filtered.every(t => selectedIds.has(t.id));
+        if (allSelected) {
+          filtered.forEach(t => selectedIds.delete(t.id));
+          showToast("Deselected all", "ℹ️");
+        } else {
+          filtered.forEach(t => selectedIds.add(t.id));
+          if (filtered.length > 0) lastSelectedId = filtered[0].id;
+          showToast(`Mem-blok ${filtered.length} file (Ctrl+A)`, "☑️");
+        }
+        renderTasks();
+        updateToolbarButtons();
+      };
+    }
+
+    // Toolbar action buttons
+    document.getElementById("btnResume").onclick = async () => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return;
+      await fetch("/api/tasks/bulk-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      showToast(`Resuming ${ids.length} download(s)...`, "▶️");
     };
-    document.getElementById("btnPause").onclick = () => {
-      if (selectedId) {
-        fetch(`/api/tasks/${selectedId}/pause`, { method: "POST" });
-        showToast("Paused download", "⏸️");
-      }
+
+    document.getElementById("btnPause").onclick = async () => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return;
+      await fetch("/api/tasks/bulk-pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      showToast(`Paused ${ids.length} download(s)`, "⏸️");
     };
+
     document.getElementById("btnOpenFile").onclick = () => {
-      if (selectedId) fetch(`/api/tasks/${selectedId}/open`, { method: "POST" });
+      const ids = Array.from(selectedIds);
+      if (ids.length === 1) fetch(`/api/tasks/${ids[0]}/open`, { method: "POST" });
     };
+
     document.getElementById("btnOpenFolder").onclick = () => {
-      if (selectedId) fetch(`/api/tasks/${selectedId}/open-folder`, { method: "POST" });
+      const ids = Array.from(selectedIds);
+      if (ids.length > 0) fetch(`/api/tasks/${ids[0]}/open-folder`, { method: "POST" });
     };
-    document.getElementById("btnDelete").onclick = () => {
-      if (selectedId && confirm("Delete this download record and file?")) {
-        fetch(`/api/tasks/${selectedId}?deleteFile=true`, { method: "DELETE" });
-        selectedId = null;
-        showToast("Download deleted", "🗑️");
+
+    document.getElementById("btnDelete").onclick = async () => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return;
+      const msg = ids.length === 1
+        ? "Delete this download record and file?"
+        : `Hapus ${ids.length} file download yang diblok/dipilih?`;
+      if (confirm(msg)) {
+        await fetch("/api/tasks/bulk-delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids, deleteFile: true }),
+        });
+        selectedIds.clear();
+        lastSelectedId = null;
+        showToast(`${ids.length} file download dihapus`, "🗑️");
       }
     };
+
+    // Keyboard Shortcuts (Ctrl+A, Esc, Delete)
+    window.addEventListener("keydown", (e) => {
+      const isInput = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A") && !isInput) {
+        e.preventDefault();
+        const filtered = getFilteredTasks();
+        filtered.forEach(t => selectedIds.add(t.id));
+        if (filtered.length > 0) lastSelectedId = filtered[0].id;
+        renderTasks();
+        updateToolbarButtons();
+        showToast(`Mem-blok semua ${filtered.length} file`, "☑️");
+        return;
+      }
+
+      if (e.key === "Escape" && !isInput) {
+        if (selectedIds.size > 0) {
+          selectedIds.clear();
+          lastSelectedId = null;
+          renderTasks();
+          updateToolbarButtons();
+        }
+        return;
+      }
+
+      if (e.key === "Delete" && !isInput) {
+        if (selectedIds.size > 0) {
+          document.getElementById("btnDelete").click();
+        }
+        return;
+      }
+    });
 
     // Search bar controls
     const searchBar = document.getElementById("searchBar");
@@ -1009,7 +1230,9 @@
       for (let i = 0; i < allTasks.length; i++) {
         const idx = (findCursor + i) % allTasks.length;
         if (allTasks[idx].fileName.toLowerCase().includes(q)) {
-          selectedId = allTasks[idx].id;
+          selectedIds.clear();
+          selectedIds.add(allTasks[idx].id);
+          lastSelectedId = allTasks[idx].id;
           findCursor = (idx + 1) % allTasks.length;
           renderTasks();
           return;

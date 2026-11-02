@@ -204,6 +204,40 @@ export class WebServer {
         return;
       }
 
+      if (pathname === "/api/tasks/bulk-pause" && req.method === "POST") {
+        const body = await this.readJsonBody(req);
+        const ids: string[] = Array.isArray(body.ids) ? body.ids : [];
+        for (const id of ids) {
+          await this.queue.pauseDownload(id);
+        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, count: ids.length }));
+        return;
+      }
+
+      if (pathname === "/api/tasks/bulk-resume" && req.method === "POST") {
+        const body = await this.readJsonBody(req);
+        const ids: string[] = Array.isArray(body.ids) ? body.ids : [];
+        for (const id of ids) {
+          await this.queue.resumeDownload(id);
+        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, count: ids.length }));
+        return;
+      }
+
+      if (pathname === "/api/tasks/bulk-delete" && req.method === "POST") {
+        const body = await this.readJsonBody(req);
+        const ids: string[] = Array.isArray(body.ids) ? body.ids : [];
+        const deleteFile = Boolean(body.deleteFile);
+        for (const id of ids) {
+          await this.queue.deleteDownload(id, deleteFile);
+        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, count: ids.length }));
+        return;
+      }
+
       if (pathname.startsWith("/api/tasks/") && pathname.endsWith("/pause") && req.method === "POST") {
         const id = pathname.split("/")[3];
         const ok = await this.queue.pauseDownload(id);
